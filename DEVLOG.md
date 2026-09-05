@@ -3,7 +3,7 @@
 ## [2026-09-05] - Experimental Framework & Dataset Split Configuration
 
 ### Overview
-Prepared the repository for multi-detector negative-frame ratio benchmarking (YOLO11n, YOLO26n, D-FINE-N). Implemented stratified dataset splitting, generated the 4 negative-to-positive ratio configurations (0%, 20%, 40%, ~81%), created detector configuration files, and established an automated verification pipeline.
+Prepared the repository for multi-detector negative-frame ratio benchmarking (YOLO11n, YOLO26n, D-FINE-N). Implemented stratified dataset splitting, generated the 5 negative-to-positive ratio configurations (0%, 20%, 40%, 60%, ~81%), created detector configuration files, and established an automated verification pipeline.
 
 ---
 
@@ -15,6 +15,7 @@ Prepared the repository for multi-detector negative-frame ratio benchmarking (YO
   * `train_00_pos_only` (0% Negative / Zero-Negative Baseline)
   * `train_20_low_neg` (20% Negative / Low-Negative)
   * `train_40_mod_neg` (40% Negative / Moderate-Negative)
+  * `train_60_high_neg` (60% Negative / High-Negative)
   * `train_81_nat_full` (~81% Negative / Natural Distribution Full Pool)
 
 #### 2. Dataset Partitioning (Stratified 80/10/10 Random Split)
@@ -25,9 +26,10 @@ Prepared the repository for multi-detector negative-frame ratio benchmarking (YO
     * **0% (`train_00_pos_only`):** 2,401 pos, 0 neg (Total: 2,401 frames)
     * **20% (`train_20_low_neg`):** 2,401 pos, 600 neg (Total: 3,001 frames)
     * **40% (`train_40_mod_neg`):** 2,401 pos, 1,600 neg (Total: 4,001 frames)
+    * **60% (`train_60_high_neg`):** 2,401 pos, 3,602 neg (Total: 6,003 frames)
     * **~81% (`train_81_nat_full`):** 2,401 pos, 10,178 neg (Total: 12,579 frames)
 * Positives stratified across the 4 driver-cue categories (`phone_use`, `drinking`, `yawning`, `hand_over_mouth`).
-* Negatives sampled in strictly nested subsets ($\text{Neg}_{0\%} \subset \text{Neg}_{20\%} \subset \text{Neg}_{40\%} \subset \text{Neg}_{81\%}$) using deterministic seed (`SEED = 42`).
+* Negatives sampled in strictly nested subsets ($\text{Neg}_{0\%} \subset \text{Neg}_{20\%} \subset \text{Neg}_{40\%} \subset \text{Neg}_{60\%} \subset \text{Neg}_{81\%}$) using deterministic seed (`SEED = 42`).
 
 #### 3. Pipelines & Scripts
 * `src/data/create_splits.py`: Deterministic split generation producing:
@@ -38,7 +40,7 @@ Prepared the repository for multi-detector negative-frame ratio benchmarking (YO
 * `src/data/verify_splits.py`: Automated verification suite testing:
   * 100% file existence on disk for all manifest image paths
   * Strict zero data leakage ($\text{Train} \cap \text{Val} = \emptyset$, $\text{Train} \cap \text{Test} = \emptyset$, $\text{Val} \cap \text{Test} = \emptyset$)
-  * Negative subset nesting integrity
+  * Negative subset nesting integrity across all 5 training levels
   * COCO JSON schema and annotation counts
   * Ultralytics YAML parsing and dataset compatibility
 
@@ -47,6 +49,7 @@ Prepared the repository for multi-detector negative-frame ratio benchmarking (YO
   * `configs/yolo/yolo_00_pos_only.yaml`
   * `configs/yolo/yolo_20_low_neg.yaml`
   * `configs/yolo/yolo_40_mod_neg.yaml`
+  * `configs/yolo/yolo_60_high_neg.yaml`
   * `configs/yolo/yolo_81_nat_full.yaml`
 
 #### 5. Documentation & Repository Integrity

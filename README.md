@@ -45,7 +45,7 @@ RQ2 (Curation Quality):
 | Axis | Levels |
 |------|--------|
 | Architecture | YOLO11n, YOLO26n, D-FINE-N |
-| Negative ratio (random) | 0%, 20%, 40%, ~81% (existing full dataset — zero extra labeling) |
+| Negative ratio (random) | 0%, 20%, 40%, 60%, ~81% (existing full dataset — zero extra labeling) |
 | Negative type (at each arch's best ratio only) | Random subsample vs. curated hard negatives |
 | Core metrics | Precision, Recall, mAP@50, mAP@50:95, FP rate /1,000 frames |
 | Efficiency context (report once per architecture) | Params/FLOPs/latency — used only to frame C3's cost discussion |
@@ -55,6 +55,7 @@ RQ2 (Curation Quality):
 | `train_00_pos_only` | 0% | 2,401 | 0 | 2,401 |
 | `train_20_low_neg` | 20% | 2,401 | 600 | 3,001 |
 | `train_40_mod_neg` | 40% | 2,401 | 1,600 | 4,001 |
+| `train_60_high_neg` | 60% | 2,401 | 3,602 | 6,003 |
 | `train_81_nat_full` | ~81% (natural pool) | 2,401 | 10,178 | 12,579 |
 
 > **Held-Out Benchmarks (Fixed Natural Distribution):**

@@ -152,6 +152,12 @@ def main():
             "neg": shuffled_train_neg[:1600],
             "target_ratio": "40%"
         },
+        "train_60_high_neg": {
+            "name": "train_60_high_neg",
+            "pos": train_pos,
+            "neg": shuffled_train_neg[:3602],
+            "target_ratio": "60%"
+        },
         "train_81_nat_full": {
             "name": "train_81_nat_full",
             "pos": train_pos,
