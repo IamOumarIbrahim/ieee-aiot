@@ -5,7 +5,8 @@ Ratios produced:
 - 0%  (Positive-Only): 2,401 pos, 0 neg (Total: 2,401)
 - 20% (Low-Negative): 2,401 pos, 600 neg (Total: 3,001)
 - 40% (Moderate-Negative): 2,401 pos, 1,600 neg (Total: 4,001)
-- ~81% (Natural Full Pool): 2,401 pos, 10,178 neg (Total: 12,579)
+- 60% (High-Negative): 2,401 pos, 3,602 neg (Total: 6,003)
+- 80% (Dominant-Negative): 2,401 pos, 9,604 neg (Total: 12,005)
 
 Evaluation sets:
 - Test: 300 pos, 1,272 neg (Total: 1,572, 80.9% negative)
@@ -158,11 +159,11 @@ def main():
             "neg": shuffled_train_neg[:3602],
             "target_ratio": "60%"
         },
-        "train_81_nat_full": {
-            "name": "train_81_nat_full",
+        "train_80_max_neg": {
+            "name": "train_80_max_neg",
             "pos": train_pos,
-            "neg": shuffled_train_neg,
-            "target_ratio": "~81%"
+            "neg": shuffled_train_neg[:9604],
+            "target_ratio": "80%"
         }
     }
 
@@ -192,6 +193,18 @@ def main():
     save_coco(test_coco, eval_out_dir / "instances_test.json")
     save_coco(val_coco, eval_out_dir / "instances_val.json")
 
+    # Clean up obsolete 81% files if they exist
+    obsolete_files = [
+        yolo_out_dir / "train_81_nat_full.txt",
+        coco_out_dir / "instances_train_81_nat_full.json",
+        dfine_out_dir / "instances_train_81_nat_full.json",
+        eval_out_dir / "instances_train_81_nat_full.json",
+    ]
+    for obs in obsolete_files:
+        if obs.exists():
+            obs.unlink()
+            print(f"Removed obsolete file: {obs}")
+
     # 2. Save each training configuration
     stats = {}
     for cfg_key, cfg in train_configs.items():
@@ -220,11 +233,11 @@ def main():
         save_coco(cfg_coco, dfine_out_dir / f"instances_{cfg_key}.json")
         save_coco(cfg_coco, eval_out_dir / f"instances_{cfg_key}.json")
 
-    # Also keep train.txt and instances_train.json pointing to natural full for default compatibility
-    save_yolo_txt(to_yolo_paths(train_configs["train_81_nat_full"]["pos"] + train_configs["train_81_nat_full"]["neg"]), yolo_out_dir / "train.txt")
-    save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_81_nat_full"]["pos"] + train_configs["train_81_nat_full"]["neg"]]), coco_out_dir / "instances_train.json")
-    save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_81_nat_full"]["pos"] + train_configs["train_81_nat_full"]["neg"]]), dfine_out_dir / "instances_train.json")
-    save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_81_nat_full"]["pos"] + train_configs["train_81_nat_full"]["neg"]]), eval_out_dir / "instances_train.json")
+    # Also keep train.txt and instances_train.json pointing to 80% dominant-negative split for default compatibility
+    save_yolo_txt(to_yolo_paths(train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]), yolo_out_dir / "train.txt")
+    save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]]), coco_out_dir / "instances_train.json")
+    save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]]), dfine_out_dir / "instances_train.json")
+    save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]]), eval_out_dir / "instances_train.json")
 
     # Save summary stats
     summary_path = repo_root / "data" / "processed" / "RGB" / "split_stats.json"

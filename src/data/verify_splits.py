@@ -22,7 +22,7 @@ def main():
         "train_20_low_neg": (yolo_dir / "train_20_low_neg.txt", 3001),
         "train_40_mod_neg": (yolo_dir / "train_40_mod_neg.txt", 4001),
         "train_60_high_neg": (yolo_dir / "train_60_high_neg.txt", 6003),
-        "train_81_nat_full": (yolo_dir / "train_81_nat_full.txt", 12579),
+        "train_80_max_neg": (yolo_dir / "train_80_max_neg.txt", 12005),
     }
 
     manifest_paths = {}
@@ -42,7 +42,7 @@ def main():
         print(f"  [OK] {name}: {len(lines)} paths (all exist on disk)")
 
     print("\n=== 2. ZERO DATA LEAKAGE CHECKS ===")
-    train_full = manifest_paths["train_81_nat_full"]
+    train_full = manifest_paths["train_80_max_neg"]
     val_set = manifest_paths["val"]
     test_set = manifest_paths["test"]
 
@@ -59,13 +59,13 @@ def main():
     t20 = manifest_paths["train_20_low_neg"]
     t40 = manifest_paths["train_40_mod_neg"]
     t60 = manifest_paths["train_60_high_neg"]
-    t81 = manifest_paths["train_81_nat_full"]
+    t80 = manifest_paths["train_80_max_neg"]
 
     assert t0.issubset(t20), "Train 0% is not a subset of Train 20%!"
     assert t20.issubset(t40), "Train 20% is not a subset of Train 40%!"
     assert t40.issubset(t60), "Train 40% is not a subset of Train 60%!"
-    assert t60.issubset(t81), "Train 60% is not a subset of Train 81%!"
-    print("  [OK] Train(0%) ⊂ Train(20%) ⊂ Train(40%) ⊂ Train(60%) ⊂ Train(81%)")
+    assert t60.issubset(t80), "Train 60% is not a subset of Train 80%!"
+    print("  [OK] Train(0%) ⊂ Train(20%) ⊂ Train(40%) ⊂ Train(60%) ⊂ Train(80%)")
 
     print("\n=== 4. VERIFYING COCO JSONS ===")
     coco_files = {
@@ -75,7 +75,7 @@ def main():
         "train_20": (coco_dir / "instances_train_20_low_neg.json", 3001, 2401),
         "train_40": (coco_dir / "instances_train_40_mod_neg.json", 4001, 2401),
         "train_60": (coco_dir / "instances_train_60_high_neg.json", 6003, 2401),
-        "train_81": (coco_dir / "instances_train_81_nat_full.json", 12579, 2401),
+        "train_80": (coco_dir / "instances_train_80_max_neg.json", 12005, 2401),
     }
 
     for name, (path, exp_imgs, exp_anns) in coco_files.items():
@@ -89,7 +89,7 @@ def main():
         print(f"  [OK] {name}: {imgs} images, {anns} annotations")
 
     print("\n=== 5. ULTRALYTICS YAML CONFIG VERIFICATION ===")
-    for yml in ["yolo_00_pos_only.yaml", "yolo_20_low_neg.yaml", "yolo_40_mod_neg.yaml", "yolo_60_high_neg.yaml", "yolo_81_nat_full.yaml"]:
+    for yml in ["yolo_00_pos_only.yaml", "yolo_20_low_neg.yaml", "yolo_40_mod_neg.yaml", "yolo_60_high_neg.yaml", "yolo_80_max_neg.yaml"]:
         yml_path = configs_dir / yml
         assert yml_path.exists(), f"Missing config: {yml_path}"
         # Validate that ultralytics can parse and find datasets
