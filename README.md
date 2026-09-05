@@ -12,6 +12,13 @@
 
 ## Table of Contents
 
+- [Overview](#overview)
+- [Current Benchmark Status](#current-benchmark-status)
+- [Quick Reproduction](#quick-reproduction)
+- [Repository Organization](#repository-organization)
+- [Authors & Citation](#authors--citation)
+- [Acknowledgments & License](#acknowledgments--license)
+
 ## Overview
 
 ### Research Question
