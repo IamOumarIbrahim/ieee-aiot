@@ -1,0 +1,54 @@
+# Development Log
+
+## [2026-09-05] - Experimental Framework & Dataset Split Configuration
+
+### Overview
+Prepared the repository for multi-detector negative-frame ratio benchmarking (YOLO11n, YOLO26n, D-FINE-N). Implemented stratified dataset splitting, generated the 4 negative-to-positive ratio configurations (0%, 20%, 40%, ~81%), created detector configuration files, and established an automated verification pipeline.
+
+---
+
+### Key Changes & Implementations
+
+#### 1. Experimental Framing & Semantic Split Naming
+* Formulated core research questions (RQ1: ratio sensitivity and architecture invariance; RQ2: random vs. hard-negative curation; C3: false-positive operational cost translation).
+* Defined semantic naming conventions for experimental splits:
+  * `train_00_pos_only` (0% Negative / Zero-Negative Baseline)
+  * `train_20_low_neg` (20% Negative / Low-Negative)
+  * `train_40_mod_neg` (40% Negative / Moderate-Negative)
+  * `train_81_nat_full` (~81% Negative / Natural Distribution Full Pool)
+
+#### 2. Dataset Partitioning (Stratified 80/10/10 Random Split)
+* Adopted an 80/10/10 frame-level random partition across the entire 15,723-frame driver monitoring corpus (3,001 positive, 12,722 negative):
+  * **Held-Out Test Benchmark:** 1,572 frames (300 positive, 1,272 negative · 80.9% negative prevalence).
+  * **Held-Out Validation Benchmark:** 1,572 frames (300 positive, 1,272 negative · 80.9% negative prevalence).
+  * **Training Configurations (2,401 positive frames held fixed across all splits):**
+    * **0% (`train_00_pos_only`):** 2,401 pos, 0 neg (Total: 2,401 frames)
+    * **20% (`train_20_low_neg`):** 2,401 pos, 600 neg (Total: 3,001 frames)
+    * **40% (`train_40_mod_neg`):** 2,401 pos, 1,600 neg (Total: 4,001 frames)
+    * **~81% (`train_81_nat_full`):** 2,401 pos, 10,178 neg (Total: 12,579 frames)
+* Positives stratified across the 4 driver-cue categories (`phone_use`, `drinking`, `yawning`, `hand_over_mouth`).
+* Negatives sampled in strictly nested subsets ($\text{Neg}_{0\%} \subset \text{Neg}_{20\%} \subset \text{Neg}_{40\%} \subset \text{Neg}_{81\%}$) using deterministic seed (`SEED = 42`).
+
+#### 3. Pipelines & Scripts
+* `src/data/create_splits.py`: Deterministic split generation producing:
+  * YOLO manifest files in `data/processed/RGB/yolo/`
+  * COCO JSON annotations in `data/processed/RGB/coco/`
+  * Mirror copies for D-FINE in `data/processed/RGB/coco/dfine/` and evaluation in `data/processed/RGB/coco/evaluation/`
+  * Split metadata summary in `data/processed/RGB/split_stats.json`
+* `src/data/verify_splits.py`: Automated verification suite testing:
+  * 100% file existence on disk for all manifest image paths
+  * Strict zero data leakage ($\text{Train} \cap \text{Val} = \emptyset$, $\text{Train} \cap \text{Test} = \emptyset$, $\text{Val} \cap \text{Test} = \emptyset$)
+  * Negative subset nesting integrity
+  * COCO JSON schema and annotation counts
+  * Ultralytics YAML parsing and dataset compatibility
+
+#### 4. Model Configurations (`configs/yolo/`)
+* Created dataset configuration files for Ultralytics YOLO:
+  * `configs/yolo/yolo_00_pos_only.yaml`
+  * `configs/yolo/yolo_20_low_neg.yaml`
+  * `configs/yolo/yolo_40_mod_neg.yaml`
+  * `configs/yolo/yolo_81_nat_full.yaml`
+
+#### 5. Documentation & Repository Integrity
+* Updated `README.md` experimental matrix with exact split counts, semantic names, and benchmark specifications.
+* Fixed `.gitignore` from `data/` to `/data/` so source scripts under `src/data/` remain tracked.

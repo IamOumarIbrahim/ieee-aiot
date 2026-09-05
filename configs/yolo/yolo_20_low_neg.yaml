@@ -1,0 +1,11 @@
+# Ultralytics YOLO dataset configuration: 20% Negative Frames (Low-Negative)
+path: data/processed/RGB
+train: yolo/train_20_low_neg.txt   # 3,001 frames (2,401 pos, 600 neg, 20% negative)
+val: yolo/val.txt                  # 1,572 frames (300 pos, 1,272 neg, ~81% negative)
+test: yolo/test.txt                # 1,572 frames (300 pos, 1,272 neg, ~81% negative)
+
+names:
+  0: yawning
+  1: hand_over_mouth
+  2: drinking
+  3: phone_use

@@ -1,0 +1,11 @@
+# Ultralytics YOLO dataset configuration: 0% Negative Frames (Positive-Only Baseline)
+path: data/processed/RGB
+train: yolo/train_00_pos_only.txt  # 2,401 positive frames (0 negatives)
+val: yolo/val.txt                  # 1,572 frames (300 pos, 1,272 neg, ~81% negative)
+test: yolo/test.txt                # 1,572 frames (300 pos, 1,272 neg, ~81% negative)
+
+names:
+  0: yawning
+  1: hand_over_mouth
+  2: drinking
+  3: phone_use

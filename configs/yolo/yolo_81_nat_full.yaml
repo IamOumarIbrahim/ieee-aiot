@@ -1,0 +1,11 @@
+# Ultralytics YOLO dataset configuration: ~81% Negative Frames (Natural Distribution / Full Pool)
+path: data/processed/RGB
+train: yolo/train_81_nat_full.txt  # 12,579 frames (2,401 pos, 10,178 neg, ~81% negative)
+val: yolo/val.txt                  # 1,572 frames (300 pos, 1,272 neg, ~81% negative)
+test: yolo/test.txt                # 1,572 frames (300 pos, 1,272 neg, ~81% negative)
+
+names:
+  0: yawning
+  1: hand_over_mouth
+  2: drinking
+  3: phone_use
