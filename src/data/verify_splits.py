@@ -27,17 +27,19 @@ def main():
 
     manifest_paths = {}
     for name, (path, expected_count) in split_files.items():
-        assert path.exists(), f"Missing manifest: {path}"
+        if not path.exists():
+            raise ValueError(f"Missing manifest: {path}")
         with open(path, "r") as f:
             lines = [l.strip() for l in f if l.strip()]
-        assert len(lines) == expected_count, f"{name}: expected {expected_count}, got {len(lines)}"
-        
+        if len(lines) != expected_count:
+            raise ValueError(f"{name}: expected {expected_count}, got {len(lines)}")
+
         # Verify that all image paths in the manifest exist on disk
         for l in lines:
-            # l is like ./../images/...
             resolved = (yolo_dir / l).resolve()
-            assert resolved.exists(), f"Missing file on disk: {resolved}"
-            
+            if not resolved.exists():
+                raise ValueError(f"Missing file on disk: {resolved}")
+
         manifest_paths[name] = set(lines)
         print(f"  [OK] {name}: {len(lines)} paths (all exist on disk)")
 
@@ -46,9 +48,12 @@ def main():
     val_set = manifest_paths["val"]
     test_set = manifest_paths["test"]
 
-    assert len(train_full.intersection(val_set)) == 0, "DATA LEAKAGE: Train & Val overlap!"
-    assert len(train_full.intersection(test_set)) == 0, "DATA LEAKAGE: Train & Test overlap!"
-    assert len(val_set.intersection(test_set)) == 0, "DATA LEAKAGE: Val & Test overlap!"
+    if len(train_full.intersection(val_set)) != 0:
+        raise ValueError("DATA LEAKAGE: Train & Val overlap!")
+    if len(train_full.intersection(test_set)) != 0:
+        raise ValueError("DATA LEAKAGE: Train & Test overlap!")
+    if len(val_set.intersection(test_set)) != 0:
+        raise ValueError("DATA LEAKAGE: Val & Test overlap!")
     print("  [OK] Train ∩ Val = ∅")
     print("  [OK] Train ∩ Test = ∅")
     print("  [OK] Val ∩ Test = ∅")
@@ -61,10 +66,14 @@ def main():
     t60 = manifest_paths["train_60_high_neg"]
     t80 = manifest_paths["train_80_max_neg"]
 
-    assert t0.issubset(t20), "Train 0% is not a subset of Train 20%!"
-    assert t20.issubset(t40), "Train 20% is not a subset of Train 40%!"
-    assert t40.issubset(t60), "Train 40% is not a subset of Train 60%!"
-    assert t60.issubset(t80), "Train 60% is not a subset of Train 80%!"
+    if not t0.issubset(t20):
+        raise ValueError("Train 0% is not a subset of Train 20%!")
+    if not t20.issubset(t40):
+        raise ValueError("Train 20% is not a subset of Train 40%!")
+    if not t40.issubset(t60):
+        raise ValueError("Train 40% is not a subset of Train 60%!")
+    if not t60.issubset(t80):
+        raise ValueError("Train 60% is not a subset of Train 80%!")
     print("  [OK] Train(0%) ⊂ Train(20%) ⊂ Train(40%) ⊂ Train(60%) ⊂ Train(80%)")
 
     print("\n=== 4. VERIFYING COCO JSONS ===")
@@ -79,22 +88,26 @@ def main():
     }
 
     for name, (path, exp_imgs, exp_anns) in coco_files.items():
-        assert path.exists(), f"Missing COCO file: {path}"
+        if not path.exists():
+            raise ValueError(f"Missing COCO file: {path}")
         with open(path, "r") as f:
             d = json.load(f)
         imgs = len(d["images"])
         anns = len(d["annotations"])
-        assert imgs == exp_imgs, f"{name}: expected {exp_imgs} imgs, got {imgs}"
-        assert anns == exp_anns, f"{name}: expected {exp_anns} anns, got {anns}"
+        if imgs != exp_imgs:
+            raise ValueError(f"{name}: expected {exp_imgs} imgs, got {imgs}")
+        if anns != exp_anns:
+            raise ValueError(f"{name}: expected {exp_anns} anns, got {anns}")
         print(f"  [OK] {name}: {imgs} images, {anns} annotations")
 
     print("\n=== 5. ULTRALYTICS YAML CONFIG VERIFICATION ===")
     for yml in ["yolo_00_pos_only.yaml", "yolo_20_low_neg.yaml", "yolo_40_mod_neg.yaml", "yolo_60_high_neg.yaml", "yolo_80_max_neg.yaml"]:
         yml_path = configs_dir / yml
-        assert yml_path.exists(), f"Missing config: {yml_path}"
-        # Validate that ultralytics can parse and find datasets
+        if not yml_path.exists():
+            raise ValueError(f"Missing config: {yml_path}")
         data_dict = check_det_dataset(str(yml_path))
-        assert "train" in data_dict and "val" in data_dict and "test" in data_dict
+        if not ("train" in data_dict and "val" in data_dict and "test" in data_dict):
+            raise ValueError(f"Incomplete dataset config for {yml}")
         print(f"  [OK] {yml} successfully parsed by Ultralytics")
 
     print("\n=== 6. D-FINE YAML CONFIG VERIFICATION ===")
@@ -134,33 +147,44 @@ def main():
     ]
     for yml in dfine_ymls:
         yml_path = dfine_configs_dir / yml
-        assert yml_path.exists(), f"Missing D-FINE config: {yml_path}"
+        if not yml_path.exists():
+            raise ValueError(f"Missing D-FINE config: {yml_path}")
         d = load_yaml_with_includes(yml_path)
-        assert d.get("num_classes") == 4, f"{yml}: expected 4 classes, got {d.get('num_classes')}"
+        if d.get("num_classes") != 4:
+            raise ValueError(f"{yml}: expected 4 classes, got {d.get('num_classes')}")
         for loader_key in ["train_dataloader", "val_dataloader", "test_dataloader"]:
-            assert loader_key in d, f"{yml}: missing {loader_key}"
-            assert "dataset" in d[loader_key], f"{yml}: missing dataset in {loader_key}"
+            if loader_key not in d:
+                raise ValueError(f"{yml}: missing {loader_key}")
+            if "dataset" not in d[loader_key]:
+                raise ValueError(f"{yml}: missing dataset in {loader_key}")
             ann_rel = d[loader_key]["dataset"]["ann_file"]
             img_rel = d[loader_key]["dataset"]["img_folder"]
             ann_path = repo_root / ann_rel
             img_path = repo_root / img_rel
-            assert ann_path.exists(), f"{yml} ({loader_key}): missing annotation file: {ann_path}"
-            assert img_path.exists(), f"{yml} ({loader_key}): missing image folder: {img_path}"
+            if not ann_path.exists():
+                raise ValueError(f"{yml} ({loader_key}): missing annotation file: {ann_path}")
+            if not img_path.exists():
+                raise ValueError(f"{yml} ({loader_key}): missing image folder: {img_path}")
+
     print("\n=== 7. CANONICAL TRAIN NEGATIVE POOL VERIFICATION (RQ2) ===")
     pool_file = repo_root / "data" / "processed" / "RGB" / "train_neg_pool_ids.json"
-    assert pool_file.exists(), f"Missing train_neg_pool_ids.json: {pool_file}"
+    if not pool_file.exists():
+        raise ValueError(f"Missing train_neg_pool_ids.json: {pool_file}")
     with open(pool_file, "r") as f:
         pool_data = json.load(f)
     pool_ids = set(pool_data["train_neg_pool_ids"])
-    assert len(pool_ids) == 10178, f"Expected 10178 IDs, got {len(pool_ids)}"
-    
+    if len(pool_ids) != 10178:
+        raise ValueError(f"Expected 10178 IDs, got {len(pool_ids)}")
+
     with open(coco_dir / "instances_val.json", "r") as f:
         val_img_ids = {img["id"] for img in json.load(f)["images"]}
     with open(coco_dir / "instances_test.json", "r") as f:
         test_img_ids = {img["id"] for img in json.load(f)["images"]}
-    
-    assert len(pool_ids & val_img_ids) == 0, f"DATA LEAKAGE: train_neg_pool intersects with val set ({len(pool_ids & val_img_ids)} frames)!"
-    assert len(pool_ids & test_img_ids) == 0, f"DATA LEAKAGE: train_neg_pool intersects with test set ({len(pool_ids & test_img_ids)} frames)!"
+
+    if len(pool_ids & val_img_ids) != 0:
+        raise ValueError(f"DATA LEAKAGE: train_neg_pool intersects with val set ({len(pool_ids & val_img_ids)} frames)!")
+    if len(pool_ids & test_img_ids) != 0:
+        raise ValueError(f"DATA LEAKAGE: train_neg_pool intersects with test set ({len(pool_ids & test_img_ids)} frames)!")
     print(f"  [OK] train_neg_pool_ids.json verified: {len(pool_ids)} candidates, 0 val/test leakage")
 
     print("\nALL VERIFICATIONS PASSED! Directory and configurations are 100% ready for training.")

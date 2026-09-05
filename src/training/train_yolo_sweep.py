@@ -71,6 +71,7 @@ def calculate_fp_per_1k(model, test_manifest_path, conf_thresh=0.25):
             neg_test_paths.append(str(resolved_p))
 
     total_neg_frames = len(neg_test_paths)
+    assert total_neg_frames == 1272, f"Expected 1272 negative test frames, got {total_neg_frames}"
     if total_neg_frames == 0:
         return 0.0, 0, 0
 

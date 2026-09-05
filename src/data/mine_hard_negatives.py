@@ -3,7 +3,7 @@ mine_hard_negatives.py - Hard-Negative Mining Pipeline for RQ2 (IEEE AIoT Benchm
 
 Implements the frozen RQ2 experimental protocol:
 1. Reconstructs the exact 10,178 training negative candidate pool (seed=42).
-2. Runs batched inference using the 0% negative baseline detector checkpoint.
+2. Runs batched inference using the 0% negative baseline detector checkpoint (YOLO or D-FINE).
 3. Filters frames yielding false-positive detections >= tau (default 0.25).
 4. Matches the exact sample count of the best RQ1 ratio (with deterministic random backfill if needed).
 5. Generates paired COCO JSONs, YOLO manifests, and dataset configuration YAMLs.
@@ -15,13 +15,14 @@ import json
 import random
 import argparse
 from pathlib import Path
-import torch
 
 SEED = 42
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RQ2 Hard-Negative Mining Pipeline")
     parser.add_argument("--weights", type=str, required=True, help="Path to baseline detector checkpoint (trained on 0%% negative baseline)")
+    parser.add_argument("--config", type=str, default=None, help="Path to detector config (required for D-FINE if not auto-detected)")
+    parser.add_argument("--paradigm", type=str, default="auto", choices=["auto", "yolo", "dfine"], help="Detector paradigm (auto, yolo, or dfine)")
     parser.add_argument("--target-count", type=int, default=1600, help="Target number of negative frames (matches best RQ1 ratio, e.g. 1600 for 40%%)")
     parser.add_argument("--tau", type=float, default=0.25, help="Confidence threshold for false-positive detection (paper default: 0.25)")
     parser.add_argument("--tag", type=str, default="yolo11n_best_curated", help="Output tag for generated dataset and configs")
@@ -67,14 +68,17 @@ def load_master_negatives(repo_root):
         train_neg_ids = {img["id"] for img in neg_images if img["id"] not in val_ids and img["id"] not in test_ids}
 
     train_neg_pool = [img for img in neg_images if img["id"] in train_neg_ids]
-    assert len(train_neg_pool) == 10178, f"Expected 10178 train negs, got {len(train_neg_pool)}"
+    if len(train_neg_pool) != 10178:
+        raise ValueError(f"Expected 10178 train negs, got {len(train_neg_pool)}")
 
     # Strict leakage assertion: candidate pool must have strictly ZERO overlap with val or test
     train_neg_id_set = {img["id"] for img in train_neg_pool}
     overlap_val = train_neg_id_set & val_ids
     overlap_test = train_neg_id_set & test_ids
-    assert len(overlap_val) == 0, f"Critical leakage: candidate neg pool has {len(overlap_val)} frames in val set!"
-    assert len(overlap_test) == 0, f"Critical leakage: candidate neg pool has {len(overlap_test)} frames in test set!"
+    if len(overlap_val) != 0:
+        raise ValueError(f"Critical leakage: candidate neg pool has {len(overlap_val)} frames in val set!")
+    if len(overlap_test) != 0:
+        raise ValueError(f"Critical leakage: candidate neg pool has {len(overlap_test)} frames in test set!")
 
     # Load canonical train_pos (2,401 frames) directly from verified baseline split
     train_pos_coco_path = repo_root / "data" / "processed" / "RGB" / "coco" / "instances_train_00_pos_only.json"
@@ -95,7 +99,8 @@ def load_master_negatives(repo_root):
             train_chunk = cat_imgs[n_test + n_val:]
             train_pos.extend(train_chunk)
 
-    assert len(train_pos) == 2401, f"Expected 2401 train pos, got {len(train_pos)}"
+    if len(train_pos) != 2401:
+        raise ValueError(f"Expected 2401 train pos, got {len(train_pos)}")
     return master_coco, train_pos, train_neg_pool
 
 def to_yolo_paths(img_list):
@@ -123,9 +128,20 @@ def main():
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[2]
 
+    # Detect paradigm: yolo or dfine
+    paradigm = args.paradigm.lower()
+    if paradigm == "auto":
+        weights_lower = str(args.weights).lower()
+        if "dfine" in weights_lower or weights_lower.endswith(".pth") or "dfine" in args.tag.lower() or (args.config and "dfine" in str(args.config).lower()):
+            paradigm = "dfine"
+        else:
+            paradigm = "yolo"
+
     print("============================================================")
-    print("  RQ2 Hard-Negative Mining Pipeline")
+    print(f"  RQ2 Hard-Negative Mining Pipeline [Paradigm: {paradigm.upper()}]")
     print(f"  Detector Checkpoint: {args.weights}")
+    if paradigm == "dfine":
+        print(f"  Detector Config: {args.config}")
     print(f"  Confidence Threshold (tau): {args.tau}")
     print(f"  Target Negative Count: {args.target_count}")
     print(f"  Output Tag: {args.tag}")
@@ -142,29 +158,60 @@ def main():
         hard_mined_count = len(simulated_mined)
         backfill_count = 0
     else:
-        from ultralytics import YOLO
-        print(f"Loading detector weights: {args.weights}...")
-        model = YOLO(args.weights)
-
+        import torch
         img_dir = repo_root / "data" / "processed" / "RGB"
         candidate_paths = [(img_dir / img["file_name"]).resolve() for img in train_neg_pool]
 
-        print(f"Scoring {len(candidate_paths)} candidate negatives (batch_size={args.batch_size}, conf={args.tau})...")
-        mined_scores = []
-        for i in range(0, len(candidate_paths), args.batch_size):
-            batch_paths = [str(p) for p in candidate_paths[i:i + args.batch_size]]
-            results = model.predict(batch_paths, conf=args.tau, device=args.device, verbose=False)
-            for idx_in_batch, r in enumerate(results):
-                global_idx = i + idx_in_batch
-                if len(r.boxes) > 0:
-                    max_conf = float(r.boxes.conf.max().item())
-                    mined_scores.append((global_idx, max_conf, len(r.boxes)))
-            del results
-            if (i // args.batch_size) % 50 == 0 and i > 0:
-                print(f"  Processed {min(len(candidate_paths), i + args.batch_size)}/{len(candidate_paths)} images... (Found {len(mined_scores)} hard negatives so far)")
+        if paradigm == "yolo":
+            from ultralytics import YOLO
+            print(f"Loading YOLO detector weights: {args.weights}...")
+            model = YOLO(args.weights)
 
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+            print(f"Scoring {len(candidate_paths)} candidate negatives (batch_size={args.batch_size}, conf={args.tau})...")
+            mined_scores = []
+            for i in range(0, len(candidate_paths), args.batch_size):
+                batch_paths = [str(p) for p in candidate_paths[i:i + args.batch_size]]
+                results = model.predict(batch_paths, conf=args.tau, device=args.device, verbose=False)
+                for idx_in_batch, r in enumerate(results):
+                    global_idx = i + idx_in_batch
+                    if len(r.boxes) > 0:
+                        max_conf = float(r.boxes.conf.max().item())
+                        mined_scores.append((global_idx, max_conf, len(r.boxes)))
+                del results
+                if (i // args.batch_size) % 50 == 0 and i > 0:
+                    print(f"  Processed {min(len(candidate_paths), i + args.batch_size)}/{len(candidate_paths)} images... (Found {len(mined_scores)} hard negatives so far)")
+
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+        elif paradigm == "dfine":
+            sys.path.insert(0, str(repo_root / "src" / "training"))
+            from dfine_utils import load_dfine_model, score_candidates_dfine
+
+            config_path = args.config
+            if not config_path:
+                config_path = repo_root / "configs" / "dfine" / "dfine_00_pos_only.yml"
+            print(f"Loading D-FINE detector: config={config_path}, weights={args.weights}...")
+            model_wrapper, _ = load_dfine_model(
+                config_path=config_path,
+                checkpoint_path=args.weights,
+                device=args.device,
+                deploy=True
+            )
+
+            print(f"Scoring {len(candidate_paths)} candidate negatives with D-FINE (batch_size={args.batch_size}, conf={args.tau})...")
+            mined_scores = score_candidates_dfine(
+                model_or_wrapper=model_wrapper,
+                candidate_paths=candidate_paths,
+                tau=args.tau,
+                batch_size=args.batch_size,
+                device=args.device
+            )
+            del model_wrapper
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+        else:
+            raise ValueError(f"Unsupported paradigm: {paradigm}")
 
         # Rank by maximum false-positive confidence
         mined_scores.sort(key=lambda x: x[1], reverse=True)
@@ -263,6 +310,8 @@ train_dataloader:
     curation_stats = {
         "tag": args.tag,
         "detector_weights": args.weights,
+        "detector_config": args.config,
+        "paradigm": paradigm,
         "tau": args.tau,
         "candidate_pool_size": len(train_neg_pool),
         "hard_mined_detected": hard_mined_count,

@@ -102,9 +102,12 @@ def main():
         print(f"Category {cat_id} ({len(cat_imgs)}): train={len(train_chunk)}, val={len(val_chunk)}, test={len(test_chunk)}")
 
     print(f"Total stratified positives -> Train: {len(train_pos)}, Val: {len(val_pos)}, Test: {len(test_pos)}")
-    assert len(train_pos) == 2401, f"Expected 2401 train pos, got {len(train_pos)}"
-    assert len(val_pos) == 300, f"Expected 300 val pos, got {len(val_pos)}"
-    assert len(test_pos) == 300, f"Expected 300 test pos, got {len(test_pos)}"
+    if len(train_pos) != 2401:
+        raise ValueError(f"Expected 2401 train pos, got {len(train_pos)}")
+    if len(val_pos) != 300:
+        raise ValueError(f"Expected 300 val pos, got {len(val_pos)}")
+    if len(test_pos) != 300:
+        raise ValueError(f"Expected 300 test pos, got {len(test_pos)}")
 
     # Partition negative images
     rng.shuffle(neg_images)
@@ -115,9 +118,12 @@ def main():
     train_neg_pool = neg_images[n_neg_test + n_neg_val:]
 
     print(f"Negative partitioning -> Train pool: {len(train_neg_pool)}, Val: {len(val_neg)}, Test: {len(test_neg)}")
-    assert len(test_neg) == 1272
-    assert len(val_neg) == 1272
-    assert len(train_neg_pool) == 10178
+    if len(test_neg) != 1272:
+        raise ValueError(f"Expected 1272 test neg, got {len(test_neg)}")
+    if len(val_neg) != 1272:
+        raise ValueError(f"Expected 1272 val neg, got {len(val_neg)}")
+    if len(train_neg_pool) != 10178:
+        raise ValueError(f"Expected 10178 train neg pool, got {len(train_neg_pool)}")
 
     # Persist canonical train negative pool IDs for downstream mining pipelines (RQ2)
     train_neg_pool_file = repo_root / "data" / "processed" / "RGB" / "train_neg_pool_ids.json"
