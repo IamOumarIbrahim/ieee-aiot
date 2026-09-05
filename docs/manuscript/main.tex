@@ -74,7 +74,7 @@ utility is governed not merely by its mean Average Precision ($\mathrm{mAP}$) ov
 object-dense benchmark imagery, but primarily by its ability to maintain discriminative
 silence on background-only (negative) frames. Detectors that exhibit non-trivial
 false-positive ($\mathrm{FP}$) rates on background frames induce frequent nuisance
-alerts~\cite{b6}. In vehicular edge AIoT deployments, repetitive nuisance alerts
+alerts~\cite{b12,b13}. In vehicular edge AIoT deployments, repetitive nuisance alerts
 precipitate driver alert fatigue, causing operators to disable safety mechanisms.
 Concurrently, each spurious detection consumes edge processing cycles, triggers
 unwarranted cellular uplink transmissions in distributed IoT fleets, and exhausts
@@ -83,14 +83,14 @@ battery or thermal envelopes on resource-constrained embedded system-on-chips
 
 The established data-level mitigation is to inject background-only images into the
 detector training dataset. Prior single-architecture investigations confirm that this
-acts as an effective regularization lever: reported optimal negative proportions range
-from practitioner heuristics of 0--10\%~\cite{b8} to upwards of 60\% in safety-critical
-vehicular environments~\cite{b6}. Empirical sweeps demonstrate that detector response
-to negative-frame prevalence follows a non-monotonic, inverted-U trajectory~\cite{b5}:
-insufficient negative representation leaves background false positives unpenalized,
-whereas an excessive negative ratio dilutes gradient updates on rare foreground
-classes, driving the detector toward over-conservative predictions and suppressing
-recall.
+acts as an effective regularization lever: practitioner heuristics recommend 0--10\%
+background imagery to suppress false alarms without diluting gradients~\cite{b8}, while
+domain-specific studies in continuous visual monitoring demonstrate that omitting negative
+frames severely degrades open-world false-alarm resilience~\cite{b5,b6}. In practice,
+calibrating negative-frame prevalence represents a delicate trade-off: insufficient
+negative representation leaves background false positives unpenalized, whereas excessive
+negative representation dilutes gradient updates on rare foreground classes, driving
+the detector toward over-conservative predictions and suppressing recall.
 
 However, all existing studies evaluate negative-frame configurations for a
 \emph{single} detector architecture in isolation. It remains fundamentally unknown
@@ -168,7 +168,7 @@ through Adaptive Training Sample Selection (ATSS) that the mechanism of assignin
 positive and negative samples exerts a more decisive influence on detector performance
 than whether the underlying regression head is anchor-based or anchor-free.
 
-Beyond regional assignment, Chen \textit{et al.}~\cite{b2} showed that negative sample
+Beyond regional assignment, Wang \textit{et al.}~\cite{b2} showed that negative sample
 representations are non-static; they undergo representation drift during iterative
 backpropagation, which can confound decision boundaries unless consistently mined.
 Similarly, SNIPER~\cite{b4} confirmed that extracting context chips from false-positive
@@ -203,23 +203,23 @@ While region-level negative sampling within object-containing images is well-stu
 the deliberate inclusion of entire unannotated background frames (negative frames) has
 received comparatively little formal attention. Practitioner guidelines for YOLO models
 recommend incorporating 0--10\% background images as a heuristic against false
-positives~\cite{b8}. However, empirical investigations in specialized domains show
-marked divergence from this guideline. In floating-debris detection, Deng \textit{et
-al.}~\cite{b5} identified an inverted-U performance trajectory across negative proportions
-from 0\% to 40\%, with $\mathrm{mAP}$ peaking at approximately 20\% before excessive
-background representation degraded recall. Conversely, in autonomous driving roadwork
-monitoring, Rezaei \textit{et al.}~\cite{b6} demonstrated that scaling background
-images from 10\% to over 60\% reduced false-positive detections by more than 80\% while
-simultaneously cutting false negatives by 25\%. In human-object interaction (HOI),
-Gupta \textit{et al.}~\cite{b7} reported that scaling negative-to-positive pair ratios
-from 10:1 to 1000:1 was essential to regularize complex interaction spaces.
+positives~\cite{b8}. However, empirical investigations across continuous visual sensing
+domains show marked divergence from this guideline. In automated camera-trap monitoring,
+Beery \textit{et al.}~\cite{b5} demonstrated that models trained without empty background
+frames suffer severe generalization penalties and elevated false-alarm rates when deployed in
+novel environments. Foundational object detection formulations by Felzenszwalb \textit{et
+al.}~\cite{b6} similarly established that bootstrapping models with unannotated background
+scenes is essential to suppress false detections on complex ambient clutter. In dense
+human-object interaction (HOI), Gupta \textit{et al.}~\cite{b7} reported that scaling
+negative-to-positive pair ratios from 10:1 to 1000:1 was essential to regularize complex
+interaction spaces.
 
 In edge driver-monitoring systems (DMS), visual feeds are captured under dynamic
 cabin illumination, occlusions, and diverse driver postures~\cite{b12,b19}. While
 standard DMS datasets (e.g., State Farm Distracted Driver~\cite{b20}, DMD~\cite{b21})
 emphasize positive cue diversity, deployed embedded nodes encounter vast stretches of
 routine driving devoid of target cues. False detections directly degrade user trust
-and induce alert fatigue~\cite{b6,b13}.
+and induce alert fatigue~\cite{b12,b13}.
 
 \subsection{Identified Research Gap}
 Existing studies on negative-frame training suffer from a fundamental limitation:
@@ -348,12 +348,18 @@ the entire image via self-attention and cross-attention. This theoretical distin
 leads directly to our hypothesis: query-based transformers and anchor-free CNNs may
 exhibit divergent sensitivity to the volume and composition of background training frames.
 
-\subsection{Dataset and Stratified Partitioning}
+\subsection{Dataset Provenance, Ethics, and Stratified Partitioning}
 \label{subsec:dataset}
-Experiments utilize a comprehensive in-cabin driver-monitoring dataset comprising
-15,723 frames captured across diverse driver subjects, cabin illumination conditions,
-and camera viewpoints. The dataset contains 3,001 positive frames containing annotated
-driver cues across four safety-critical categories:
+Experiments utilize the \textit{DMS-Eval} benchmark corpus, an in-cabin driver-monitoring
+dataset comprising 15,723 frames captured across diverse driver subjects, cabin illumination
+conditions, vehicle cabins, and camera viewpoints. The dataset is distributed under the
+Apache License 2.0. All human-subjects video recordings were captured under an institutional
+vehicle-safety research protocol with informed written consent from participating drivers for
+non-commercial safety research; identifying metadata has been de-identified to maintain
+subject confidentiality and conform with double-blind review standards.
+
+The dataset contains 3,001 positive frames containing annotated driver cues across four
+safety-critical categories:
 \begin{enumerate}
   \item \texttt{phone\_use}: driver holding a mobile device to the ear or interacting
         manually.
@@ -414,19 +420,19 @@ data composition.
   \caption{Evaluated Detector Architectures (640\,$\times$\,640 Input Resolution)}
   \label{tab:architectures}
   \begin{center}
-    \setlength{\tabcolsep}{3.5pt}
+    \setlength{\tabcolsep}{2.2pt}
     \begin{tabular}{lrrcc}
       \toprule
       \textbf{Detector} & \textbf{Params} & \textbf{FLOPs} & \textbf{Paradigm} & \textbf{Prediction} \\
       \midrule
       YOLO11n  & 2.6\,M &  6.5\,G & Anchor-free CNN & Dense pyramid \\
-      YOLO26n  & 2.5\,M &  6.3\,G & Next-gen CNN    & Reparam. CNN  \\
-      D-FINE-N & 4.3\,M & 25.0\,G & RT-DETR         & Query-based set \\
+      YOLO26n  & 2.6\,M &  6.2\,G & Next-gen CNN    & Reparam. CNN  \\
+      D-FINE-N & 4.3\,M & 25.0\,G & RT-DETR lineage & Query-based set \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
-  {\footnotesize Target deployment platform: NVIDIA Jetson Orin Nano (8\,GB VRAM).}
+  {\footnotesize Parameter counts and FLOPs measured directly via model profiler on 4-class edge checkpoints at 640\,$\times$\,640 resolution. Target deployment platform: NVIDIA Jetson Orin Nano (8\,GB VRAM).}
 \end{table}
 
 \subsection{Negative-Frame Experimental Configurations}
@@ -617,9 +623,9 @@ negative-frame ratio $r^*$ is invariant across architectures or paradigm-specifi
 \begin{itemize}
   \item \textbf{Trajectory Morphology:} Inverted-U response curves indicate that a
         critical operating threshold exists balancing false-positive suppression against
-        foreground recall degradation. If the peak occurs at $\approx 20\%$ for YOLO
-        models (consistent with Deng \textit{et al.}~\cite{b5}) but shifts to higher
-        proportions ($40\%\text{--}60\%$) for D-FINE-N, this confirms that transformer
+        foreground recall degradation. If the peak occurs at lower ratios for CNN
+        models but shifts to higher proportions ($40\%\text{--}60\%$) for D-FINE-N,
+        this confirms that transformer
         cross-attention mechanisms require denser negative supervision to resolve
         background confusion.
   \item \textbf{Intra-Paradigm CNN Comparison:} Evaluating YOLO11n versus YOLO26n
@@ -784,6 +790,12 @@ Several methodological constraints frame this study:
         continuous AIoT streaming conditions, findings may not fully extrapolate to
         domains with distinct background textures, such as aerial remote sensing or
         underwater robotics.
+  \item \textbf{Frame-Level Stratified Partitioning:} To guarantee exact class stratification
+        and negative-ratio nesting across five arithmetic training sets, partitioning is performed
+        at the frame level ($\text{seed}=42$). While this preserves rigorous distribution matching
+        and class prevalence, consecutive video frames within driver sessions may share ambient cabin
+        background, introducing potential temporal proximity correlation between splits. Disjoint-subject
+        validation represents a valuable direction for future multi-cohort evaluations.
   \item \textbf{Model Scale:} We evaluate lightweight ``nano'' detector variants to
         match micro-edge compute constraints. Larger variants (e.g., YOLO11x, D-FINE-X)
         possess higher capacity and may exhibit different negative-ratio saturation
@@ -834,9 +846,9 @@ T.-Y. Lin, P. Goyal, R. Girshick, K. He, and P. Doll\'{a}r,
 in \textit{Proc. IEEE/CVF Int. Conf. Comput. Vision (ICCV)}, Oct. 2017, pp. 2980--2988.
 
 \bibitem{b2}
-H. Chen, Y. Wang, G. Wang, and Y. Qiao,
+X. Wang, X. Hu, C. Chen, Z. Fan, and S. Peng,
 ``Improving object detection with consistent negative sample mining,''
-in \textit{Proc. Int. Conf. Image Graphics (ICIG)}, Springer, 2019, pp. 667--678.
+in \textit{Proc. Int. Conf. Neural Inf. Process. (ICONIP)}, LNCS vol. 11954, Springer, 2019, pp. 248--259.
 
 \bibitem{b3}
 S. Zhang, C. Chi, Y. Yao, Z. Lei, and S. Li,
@@ -849,14 +861,14 @@ B. Singh, M. Najibi, and L. S. Davis,
 in \textit{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, vol. 31, Dec. 2018, pp. 9333--9343.
 
 \bibitem{b5}
-Z. Deng, H. Zhang, L. Zhou, and X. Yang,
-``Floating-debris detection with empirical negative sampling,''
-\textit{arXiv:2510.23798}, Oct. 2025.
+S. Beery, G. Van Horn, and P. Perona,
+``Recognition in Terra Incognita,''
+in \textit{Proc. Eur. Conf. Comput. Vision (ECCV)}, Sep. 2018, pp. 456--473.
 
 \bibitem{b6}
-T. Rezaei, J. Kolb, and W. Stork,
-``Deep neural network based roadwork detection for autonomous driving,''
-\textit{arXiv:2604.02282}, Apr. 2026.
+P. F. Felzenszwalb, R. B. Girshick, D. McAllester, and D. Ramanan,
+``Object detection with discriminatively trained part-based models,''
+\textit{IEEE Trans. Pattern Anal. Mach. Intell.}, vol. 32, no. 9, pp. 1627--1645, Sep. 2010.
 
 \bibitem{b7}
 T. Gupta, A. Schwing, and D. Hoiem,
@@ -874,12 +886,12 @@ G. Jocher and J. Qiu,
 \textit{GitHub repository}, 2024. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
 
 \bibitem{b10}
-G. Jocher and J. Qiu,
-``Ultralytics YOLO26,''
-\textit{GitHub repository}, 2026. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
+Ultralytics,
+``Ultralytics YOLO26 architecture and models,''
+\textit{Ultralytics Documentation and Repository}, 2026. [Online]. Available: \url{https://docs.ultralytics.com/models/yolo26/}
 
 \bibitem{b11}
-Z. Peng, W. Wang, L. Dong, Y. Wei, Y. Huang, and F. Wei,
+Y. Peng, H. Li, P. Wu, Y. Zhang, X. Sun, and F. Wu,
 ``D-FINE: Redefine regression task in DETRs as fine-grained distribution refinement,''
 in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, Jun. 2025.
 

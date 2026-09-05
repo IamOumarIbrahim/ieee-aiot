@@ -1,13 +1,12 @@
-# Core Deep Learning & Computer Vision
-torch>=2.0.0
-torchvision>=0.15.0
+# Core Deep Learning & Computer Vision (Verified on Windows 11 / Ada Lovelace / CUDA 12.4)
+torch==2.6.0+cu124
+torchvision==0.21.0+cu124
 
 # Detectors & Engines
-ultralytics>=8.3.0
-pycocotools>=2.0.7
+ultralytics==8.4.120
 
 # Utilities & Data Processing
-PyYAML>=6.0
-scipy>=1.10.0
-tqdm>=4.65.0
-numpy>=1.24.0
+PyYAML==6.0.2
+scipy==1.17.1
+tqdm==4.70.0
+numpy==2.5.2
