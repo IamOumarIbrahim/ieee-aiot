@@ -67,7 +67,41 @@ RQ2 (Curation Quality):
 
 ## Quick Reproduction
 
+### 1. Generate Dataset Splits
+Ensure dataset annotations (`data/annotations/RGB/annotations.json`) and images are present under `data/`. Split generation requires only standard Python libraries:
+```bash
+python src/data/create_splits.py
+```
+This deterministically generates all 5 experimental training configurations (`0%`, `20%`, `40%`, `60%`, `~81%`) and held-out validation/test manifests (`SEED=42`).
+
+### 2. Verify Split Integrity
+Validate zero data leakage ($\text{Train} \cap \text{Val} = \emptyset$, $\text{Train} \cap \text{Test} = \emptyset$), path integrity, and dataset configuration files:
+```bash
+python src/data/verify_splits.py
+```
+
+### 3. Train Detectors (Example)
+Train any model with Ultralytics YOLO using the corresponding configuration:
+```bash
+# Example: YOLO11n on the 20% negative split
+yolo detect train data=configs/yolo/yolo_20_low_neg.yaml model=yolo11n.pt epochs=50 imgsz=640
+```
+
 ## Repository Organization
+
+```text
+├── configs/
+│   └── yolo/              # Ultralytics dataset configs for each ratio split
+├── data/
+│   ├── annotations/       # Master annotations (15,723 frames)
+│   └── processed/RGB/     # Images, labels, YOLO manifests, and COCO JSONs
+├── docs/
+│   ├── internal/          # Research questions, methodology, and notes
+│   └── manuscript/        # IEEE AIoT conference manuscript
+└── src/
+    └── data/              # Split generation and verification scripts
+```
+
 
 ## Authors & Citation
 

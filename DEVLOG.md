@@ -53,5 +53,9 @@ Prepared the repository for multi-detector negative-frame ratio benchmarking (YO
   * `configs/yolo/yolo_81_nat_full.yaml`
 
 #### 5. Documentation & Repository Integrity
-* Updated `README.md` experimental matrix with exact split counts, semantic names, and benchmark specifications.
+* Updated `README.md` with:
+  * Experimental matrix (exact 5-level split counts, semantic names, held-out benchmarks).
+  * Quick Reproduction workflow (deterministic generation, split verification, training example).
+  * Repository organization directory tree.
 * Fixed `.gitignore` from `data/` to `/data/` so source scripts under `src/data/` remain tracked.
+
