@@ -65,6 +65,13 @@ RQ2 (Curation Quality):
 
 ## Current Benchmark Status
 
+- [x] **Dataset Curation & Splits:** Unified 80/10/10 stratified partition generated (`seed=42`).
+- [x] **Negative Ratio Configurations:** 5 nested training configurations prepared (0%, 20%, 40%, 60%, 80%).
+- [x] **Manifests & Configs:** YOLO text manifests, COCO JSONs, and Ultralytics dataset YAMLs verified.
+- [ ] **Detector Training:** YOLO11n, YOLO26n, and D-FINE-N ratio sweep runs.
+- [ ] **Hard-Negative Mining (RQ2):** Best-ratio curation benchmark.
+- [ ] **Inference & Profiling:** FP/1k frames and edge deployment cost analysis.
+
 ## Quick Reproduction
 
 ### 1. Generate Dataset Splits
@@ -72,7 +79,7 @@ Ensure dataset annotations (`data/annotations/RGB/annotations.json`) and images 
 ```bash
 python src/data/create_splits.py
 ```
-This deterministically generates all 5 experimental training configurations (`0%`, `20%`, `40%`, `60%`, `~81%`) and held-out validation/test manifests (`SEED=42`).
+This deterministically generates all 5 experimental training configurations (`0%`, `20%`, `40%`, `60%`, `80%`) and held-out validation/test manifests (`SEED=42`).
 
 ### 2. Verify Split Integrity
 Validate zero data leakage ($\text{Train} \cap \text{Val} = \emptyset$, $\text{Train} \cap \text{Test} = \emptyset$), path integrity, and dataset configuration files:
@@ -116,7 +123,7 @@ For the conference manuscript itself, use:
 
 ```bibtex
 @unpublished{ibrahim2026ieee-aiot,
-  title     = {},
+  title     = {Negative Frames Aren't Architecture-Agnostic: A Cross-Detector Study for Edge Driver Monitoring},
   author    = {Ibrahim, Oumar Mamoun and bin Ishak, Mohamad Khairi},
   year      = {2026},
   note      = {Conference paper to be submitted to the IEEE Annual Congress on Artificial Intelligence of Things (IEEE AIoT)}
@@ -125,4 +132,4 @@ For the conference manuscript itself, use:
 
 ## Acknowledgments & License
 
-This work builds on . Code is licensed under [Apache License 2.0](LICENSE); third-party datasets and dependencies retain their own licenses.
+Code is licensed under [Apache License 2.0](LICENSE); third-party datasets and dependencies retain their own licenses.
