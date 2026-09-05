@@ -128,7 +128,7 @@ def main():
     print(f"Final Test set: {len(test_set)} ({len(test_pos)} pos, {len(test_neg)} neg, {len(test_neg)/len(test_set)*100:.1f}%)")
     print(f"Final Val set: {len(val_set)} ({len(val_pos)} pos, {len(val_neg)} neg, {len(val_neg)/len(val_set)*100:.1f}%)")
 
-    # Build the 4 training configurations
+    # Build the 5 training configurations
     # Subsample negative frames with fixed seed for nested consistency
     rng_train = random.Random(SEED)
     shuffled_train_neg = list(train_neg_pool)

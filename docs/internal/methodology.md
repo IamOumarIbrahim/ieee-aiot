@@ -16,7 +16,7 @@ YOLO11n: a one-stage, anchor-free CNN detector representing the current mainstre
 YOLO26n: the succeeding YOLO generation, included to test whether architectural refinements change sensitivity to negative-frame configuration relative to YOLO11n.
 D-FINE-N: a transformer-based, query-driven real-time detector, included to test whether a fundamentally different detection paradigm (set-based prediction vs. dense anchor-free prediction) responds differently to negative-frame manipulation than the CNN-based YOLO models.
 
-All three are evaluated at their smallest ("nano") variant to reflect realistic AIoT compute budgets. Table [X] reports each model's parameter count, FLOPs, and baseline inference latency measured on the target deployment platform; since latency is a function of model structure and input resolution, not training-data composition, it is reported as fixed context rather than as a dependent variable in the negative-frame experiments.
+All three are evaluated at their smallest ("nano") variant to reflect realistic AIoT compute budgets. Table I reports each model's parameter count, FLOPs, and baseline inference latency measured on the target deployment platform; since latency is a function of model structure and input resolution, not training-data composition, it is reported as fixed context rather than as a dependent variable in the negative-frame experiments.
 
 C. Negative-Frame Configurations
 
@@ -65,8 +65,18 @@ To ensure reproducible, hardware-isolated comparisons on an NVIDIA RTX 4060 (8 G
 3. **Training Budgets & Augmentation Schedules:** YOLO variants are trained for 100 epochs with mosaic augmentation disabled for the final 10 epochs (`close_mosaic=10`). D-FINE-N is trained for 160 epochs with augmentation disabled at epoch 148 (`stop_epoch=148`).
 4. **Deterministic Single-Seed Evaluation:** A single deterministic seed (`seed=42`) is held constant across all models and ratio splits, strictly avoiding repeated multi-seed variance to respect compute budgets while maintaining zero confounding across negative-ratio treatments.
 
-Table I: run summary (21 runs)
-Figure 1: ratio sweep across architectures (main finding)
-Table II: best ratio per architecture + endpoints
-Table III: random vs. hard-mined negatives at matched ratio
-Table IV: FP-per-1k → estimated nuisance-alert rate per hour
+E. Evaluation Metrics
+
+Each trained model is evaluated once on the fixed, natural-distribution test set (Section III-A) using:
+* **Precision, Recall, mAP@50, mAP@50:95:** standard detection accuracy metrics.
+* **False positives per 1,000 frames (FP/1k):** a deployment-oriented metric capturing nuisance-alert frequency independent of mAP, motivating the operational cost analysis in Section IV-C and Section V.
+* **Confidence calibration [optional, if included]:** reliability of predicted confidence scores across ratio conditions, evaluating whether negative-heavy training suppresses confidence or sharpens decision boundaries.
+
+Because each model configuration is evaluated via a single training run without repeated seeds, cross-architecture and cross-ratio comparisons report point estimates, evaluating the practical magnitude, trend directionality, and consistency of observed differences to address RQ1 and RQ2 directly.
+
+Table I: Detector Architecture & Baseline Efficiency (Parameters, FLOPs, Edge Latency)
+Table II: Experimental Run Summary (21 Training Runs across Ratios & Sampling Strategies)
+Figure 1: Cross-Architecture Negative-Ratio Sensitivity Sweep (mAP, Precision, Recall, FP/1k)
+Table III: Optimal Negative-Frame Ratio per Architecture & Extreme Endpoints
+Table IV: Random Subsampling vs. Hard-Negative Mining at Matched Best Ratio
+Table V: FP-per-1k Frames to Operational Nuisance-Alert Rate per Hour

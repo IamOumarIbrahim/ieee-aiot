@@ -20,6 +20,7 @@ Formalized and froze the detector training protocol across YOLO11n, YOLO26n, and
 * **No subject-disjoint split:** Kept strictly to the verified 80/10/10 stratified random partition across 15,723 frames; rejected subject-disjoint 8/3/3 splits from other protocols.
 * Created `docs/internal/experimental_protocol.md` with complete tabular specifications, key methodological statement, and execution commands.
 * Synchronized `docs/internal/methodology.md` (Section III-A/C frame counts and Section III-D Training Protocol) and `README.md`.
+* Resolved internal documentation inconsistencies: fixed filename typo `introduction.md`, timeline date typo, restored Section III-E Evaluation Metrics, aligned table enumeration (Tables I–V), and harmonized Section IV-C/V operational cost cross-references across all drafts.
 
 ---
 
