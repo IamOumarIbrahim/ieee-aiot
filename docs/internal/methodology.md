@@ -1,81 +1,112 @@
-III. Methodology
-A. Dataset
+# Section III: System Modeling and Experimental Methodology
 
-Experiments use an in-cabin driver-monitoring (DMS) dataset comprising 15,723 total frames, of which 3,001 contain target driver-cue annotations (`phone_use`, `drinking`, `yawning`, `hand_over_mouth`) (positive frames) and 12,722 are background-only (negative frames), reflecting a natural negative prevalence of approximately 81%. All frames are partitioned using a stratified 80/10/10 random split (`seed=42`) into training, validation, and test partitions:
-* **Validation Benchmark:** 1,572 frames (300 positive, 1,272 negative · 80.9% negative prevalence)
-* **Test Benchmark:** 1,572 frames (300 positive, 1,272 negative · 80.9% negative prevalence)
-* **Training Pool:** 2,401 positive frames (held fixed across all training splits) and 10,178 negative candidate frames
+## A. Problem Formulation and Mathematical Modeling
+Let $\mathcal{S} = \{X_t\}_{t=1}^T$ denote a continuous streaming video feed captured by an edge camera sensor, where $X_t \in \mathcal{X} \subset \mathbb{R}^{H \times W \times 3}$ represents the image frame at time step $t$. Each frame $X_t$ is associated with a ground-truth annotation set $Y_t = \{(c_k, b_k)\}_{k=1}^{K_t}$, where $c_k \in \mathcal{C} = \{1, \dots, C\}$ is the driver behavior class index, $b_k = (x_k, y_k, w_k, h_k) \in [0, 1]^4$ denotes normalized bounding-box coordinates, and $K_t \geq 0$ denotes the number of target instances in frame $t$.
 
-Critically, the test set composition is held fixed across all experimental conditions and reflects the dataset's natural negative-heavy distribution (~81% negative). Only the training set's negative-frame configuration is varied (Section III-C). This design choice is deliberate: evaluating on an artificially rebalanced test set would mask the false-positive behavior that negative-frame configuration is intended to address, and would not reflect the negative-dominant conditions object detectors encounter in continuous AIoT video streams.
+We partition the universe of frames into two disjoint categories:
+$$\mathcal{D}_{\mathrm{pos}} = \{(X_t, Y_t) \mid K_t \geq 1\}$$
+$$\mathcal{D}_{\mathrm{neg}} = \{(X_t, \emptyset) \mid K_t = 0\}$$
 
-B. Detector Architectures
+A frame is defined as a *positive frame* ($X_t \in \mathcal{D}_{\mathrm{pos}}$) if it contains at least one driver-cue object, and as a *negative frame* ($X_t \in \mathcal{D}_{\mathrm{neg}}$) if it contains zero annotated target objects.
 
-Three lightweight detectors, selected to span distinct design paradigms relevant to edge deployment, are trained under identical conditions:
+Given an object detector parameterized by weights $\theta$, inference on an input frame $X$ yields predicted bounding tuples $f_\theta(X) = \{(\hat{c}_j, \hat{b}_j, s_j)\}_{j=1}^M$, where $\hat{c}_j \in \mathcal{C}$, $\hat{b}_j \in [0, 1]^4$, and $s_j \in [0, 1]$ represents the predicted class confidence score. At a deployed confidence operating threshold $\tau \in (0, 1]$, the filtered prediction set is:
+$$\hat{\mathcal{Y}}_\tau(X) = \left\{ (\hat{c}_j, \hat{b}_j, s_j) \in f_\theta(X) \;\middle|\; s_j \geq \tau \right\}$$
 
-YOLO11n: a one-stage, anchor-free CNN detector representing the current mainstream YOLO lineage.
-YOLO26n: the succeeding YOLO generation, included to test whether architectural refinements change sensitivity to negative-frame configuration relative to YOLO11n.
-D-FINE-N: a transformer-based, query-driven real-time detector, included to test whether a fundamentally different detection paradigm (set-based prediction vs. dense anchor-free prediction) responds differently to negative-frame manipulation than the CNN-based YOLO models.
+For any background-only negative frame $X \in \mathcal{D}_{\mathrm{neg}}$, the ground-truth instance set is empty ($Y = \emptyset$). Consequently, any detection belonging to $\hat{\mathcal{Y}}_\tau(X)$ constitutes an operational False Positive ($\mathrm{FP}$). The deployment cost metric, false positives per 1,000 background frames ($\mathrm{FP/1k}$), evaluated on the held-out negative test set $\mathcal{D}_{\mathrm{test}}^{\mathrm{neg}}$, is formalized as:
+$$\mathrm{FP/1k} = \frac{1000}{\left|\mathcal{D}_{\mathrm{test}}^{\mathrm{neg}}\right|} \sum_{X \in \mathcal{D}_{\mathrm{test}}^{\mathrm{neg}}} \left| \hat{\mathcal{Y}}_\tau(X) \right|$$
 
-All three are evaluated at their smallest ("nano") variant to reflect realistic AIoT compute budgets. Table I reports each model's parameter count, FLOPs, and baseline inference latency measured on the target edge deployment platform (NVIDIA Jetson Orin Nano 8 GB / edge GPU benchmark); since latency is a function of model structure and input resolution, not training-data composition, it is reported as fixed context rather than as a dependent variable in the negative-frame experiments.
+In an operational edge deployment operating at sensor frame rate $f_{\mathrm{FPS}}$ (frames per second) over a duration of one hour ($T_{\mathrm{hr}} = 3600\,\text{s}$), let $p_{\mathrm{neg}} \in (0, 1]$ represent the operational background frame prevalence. The expected hourly nuisance alert rate $\mathcal{A}_h$ is modeled as:
+$$\mathcal{A}_h = 3600 \times f_{\mathrm{FPS}} \times p_{\mathrm{neg}} \times \frac{\mathrm{FP/1k}}{1000} = 3.6 \times f_{\mathrm{FPS}} \times p_{\mathrm{neg}} \times \mathrm{FP/1k}$$
+Under unconditioned driving streams ($p_{\mathrm{neg}} \approx 0.809$), this formulation computes the real-world nuisance alert burden experienced by the driver and edge communication stack.
 
-C. Negative-Frame Configurations
+---
 
-Two experimental axes isolate the effect of negative-frame training data, corresponding to RQ1 and RQ2.
+## B. Architectural Loss Dynamics on Negative Frames
 
-1) Ratio sweep (RQ1). For each architecture, five training sets are constructed by holding the full 2,401 positive-frame core fixed and sampling nested negative-frame subsets to reach exact arithmetic 20% stepping: 0% (0 neg / 2,401 total), 20% (600 neg / 3,001 total), 40% (1,600 neg / 4,001 total), 60% (3,602 neg / 6,003 total), and 80% (9,604 neg / 12,005 total). This yields 3 architectures × 5 ratios = 15 training runs. All non-negative-frame factors (positive frames, augmentation schedules, hyperparameters, epochs) are held constant within an architecture across ratios, isolating negative-frame ratio as the sole independent variable.
+### 1. Anchor-Free Decoupled CNNs (YOLO11n / YOLO26n)
+The multi-task loss function for modern anchor-free YOLO architectures is:
+$$\mathcal{L}_{\mathrm{YOLO}} = \lambda_{\mathrm{cls}} \mathcal{L}_{\mathrm{cls}} + \lambda_{\mathrm{box}} \mathcal{L}_{\mathrm{box}} + \lambda_{\mathrm{dfl}} \mathcal{L}_{\mathrm{dfl}}$$
+where $\mathcal{L}_{\mathrm{box}}$ is Complete IoU (CIoU) loss, $\mathcal{L}_{\mathrm{dfl}}$ is Distribution Focal Loss, and $\mathcal{L}_{\mathrm{cls}}$ is Binary Cross-Entropy ($\mathrm{BCE}$).
+When training on a negative frame $X \in \mathcal{D}_{\mathrm{neg}}$, no ground-truth bounding boxes exist ($Y = \emptyset$). The Task-Aligned Assigner assigns zero positive anchors across all feature pyramid scales $s \in \{P_3, P_4, P_5\}$. As a result, the regression terms vanish ($\mathcal{L}_{\mathrm{box}} = 0, \mathcal{L}_{\mathrm{dfl}} = 0$), and the loss collapses strictly to the classification objective across all spatial anchor locations:
+$$\mathcal{L}_{\mathrm{YOLO}}^{\mathrm{neg}} = -\lambda_{\mathrm{cls}} \sum_{s=1}^S \sum_{i=1}^{H_s W_s} \sum_{c=1}^C \log\left(1 - \hat{p}_{s, i, c}\right)$$
+where $\hat{p}_{s, i, c} = \sigma(z_{s, i, c})$ is the predicted probability for class $c$ at grid cell $i$ of pyramid scale $s$. In the absence of negative frames ($r = 0\%$), classification gradients on background regions arise exclusively from non-target areas of positive frames. Adding negative frames exposes the local convolutional filters to diverse cabin environments devoid of foreground cues, penalizing spurious local activations.
 
-2) Hard-negative curation (RQ2). For each architecture, the ratio identified as best-performing in the RQ1 sweep is used as the anchor point for a controlled comparison: negatives sampled randomly at that ratio versus negatives sampled via a hard-negative mining protocol, at matched dataset size (so any difference reflects composition, not volume). The mining protocol is:
+### 2. Query-Based Real-Time DETRs (D-FINE-N)
+In D-FINE-N, detection is formulated via a fixed set of $N_q$ learned object queries ($N_q = 300$). Training relies on optimal bipartite matching via the Hungarian algorithm:
+$$\hat{\sigma} = \arg\min_{\sigma \in \mathfrak{S}_{N_q}} \sum_{i=1}^{N_q} \mathcal{L}_{\mathrm{match}}\left(y_i, \hat{y}_{\sigma(i)}\right)$$
+where $\mathfrak{S}_{N_q}$ is the permutation group of $N_q$ elements. On a negative frame ($Y = \emptyset$), the ground-truth set contains only null targets ($\varnothing$). Every query $i \in \{1, \dots, N_q\}$ is unconditionally matched to the background class $\varnothing$. Consequently, the bounding-box L1 loss, Generalized IoU (GIoU) loss, and Fine-grained Distribution Refinement ($\mathcal{L}_{\mathrm{FDR}}$) loss are zero. The training loss reduces entirely to the classification objective:
+$$\mathcal{L}_{\mathrm{DFINE}}^{\mathrm{neg}} = \sum_{j=1}^{N_q} \mathrm{FL}\left(\hat{p}_j, 0\right) = -\sum_{j=1}^{N_q} \alpha \hat{p}_j^\gamma \log\left(1 - \hat{p}_j\right)$$
+where $\mathrm{FL}$ denotes Focal Loss with focusing parameter $\gamma$ and balance factor $\alpha$. Unlike CNNs where gradients penalize tens of thousands of fixed spatial grid points locally, DETRs supervise a compact set of global queries interacting across the entire image via self-attention and cross-attention.
 
-Train a baseline model (the architecture's 0%-negative or lowest-ratio checkpoint) on the full negative-frame pool at inference time only.
-Retain negative frames on which the baseline produces a false-positive prediction above a fixed confidence threshold τ = 0.25 (the standard operating detection threshold in driver monitoring systems).
-If retained frames are fewer than the target ratio requires, backfill with randomly sampled negatives to match the matched dataset size exactly.
+---
 
-This yields 3 architectures × 2 sampling strategies (random vs. hard, at the matched best ratio) = 6 additional runs, for 21 total training runs.
+## C. Dataset and Stratified Partitioning
+Experiments use an in-cabin driver-monitoring (DMS) dataset comprising 15,723 total frames, of which 3,001 contain target driver-cue annotations (`phone_use`, `drinking`, `yawning`, `hand_over_mouth`) and 12,722 are background-only (80.9% negative prevalence). All frames are partitioned using a stratified 80/10/10 random split (`seed=42`):
+* **Held-Out Validation Benchmark ($\mathcal{D}_{\mathrm{val}}$):** 1,572 frames (300 positive, 1,272 negative; 80.9% negative prevalence)
+* **Held-Out Test Benchmark ($\mathcal{D}_{\mathrm{test}}$):** 1,572 frames (300 positive, 1,272 negative; 80.9% negative prevalence)
+* **Training Universe ($\mathcal{D}_{\mathrm{train}}^{\mathrm{univ}}$):** 2,401 positive frames ($\mathcal{D}_{\mathrm{pos}}$) held fixed across all training splits, and 10,178 candidate negative frames ($\mathcal{U}_{\mathrm{neg}}$).
 
-D. Training Protocol
+Evaluating on a fixed, natural-distribution test set preserves the false-positive behavior that negative-frame configuration is intended to address.
 
-### Corrected & Frozen Configuration — RTX 4060 8GB
+---
 
-| Parameter                 |           YOLO11n |           YOLO26n |         D-FINE-N |
-| ------------------------- | ----------------: | ----------------: | ---------------: |
-| **Input Resolution**      |         640 × 640 |         640 × 640 |        640 × 640 |
-| **Physical Batch Size**   |                16 |                16 |                4 |
-| **Gradient Accumulation** |                 1 |                 1 |                8 |
-| **Effective Batch Size**  |                16 |                16 |               32 |
-| **Epochs**                |               100 |               100 |              160 |
-| **Optimizer**             |            `auto` |            `auto` |            AdamW |
-| **AMP**                   |                 ✓ |                 ✓ |                ✓ |
-| **Seed**                  |  **1 fixed seed** |  **1 fixed seed** | **1 fixed seed** |
-| **Native Augmentation**   |                 ✓ |                 ✓ |                ✓ |
-| **Augmentation Stop**     | `close_mosaic=10` | `close_mosaic=10` | `stop_epoch=148` |
-| **Backbone LR**           |                 — |                 — |       **0.0004** |
-| **Head / Transformer LR** |                 — |                 — |       **0.0008** |
-| **Weight Decay**          |            0.0005 |            0.0005 |           0.0001 |
-| **EMA Restart Decay**     |                 — |                 — |           0.9999 |
+## D. Detector Architectures
+Three lightweight detectors spanning distinct design paradigms:
+1. **YOLO11n:** Mainstream anchor-free CNN (2.6M params, 6.5 GFLOPs).
+2. **YOLO26n:** Next-generation CNN with reparameterized convolution blocks (2.5M params, 6.3 GFLOPs).
+3. **D-FINE-N:** Query-based real-time DETR transformer with fine-grained distribution refinement (4.3M params, 25.0 GFLOPs).
 
-### Key Methodological Statement
+Target deployment platform: NVIDIA Jetson Orin Nano (8 GB VRAM). Baseline latency is architecture-bound, not training-data-bound.
 
-> The models were trained using their respective native optimization and augmentation frameworks. Hardware-constrained batch sizes were adjusted for the RTX 4060 (8 GB), with gradient accumulation applied only to D-FINE-N. Official learning rates, weight decay, augmentation schedules, and training budgets were retained where applicable. The same fixed random seed and training configuration were used across all negative-frame ratio configurations, with the negative-frame ratio as the controlled experimental variable.
+---
 
-### Protocol Details & Hardware Adaptation
+## E. Negative-Frame Experimental Configurations
 
-To ensure reproducible, hardware-isolated comparisons on an NVIDIA RTX 4060 (8 GB VRAM), models are trained from their official pretrained COCO checkpoints at a uniform 640 × 640 resolution under mixed precision (AMP):
-1. **Batch Size & Gradient Accumulation:** YOLO11n and YOLO26n operate at a physical and effective batch size of 16 without gradient accumulation. For D-FINE-N, VRAM constraints at 8 GB require a physical batch size of 4; gradient accumulation across 8 steps yields an effective batch size of 32. This represents a pragmatic hardware adaptation, rather than an official native batch configuration; we explicitly do not claim effective batch 32 is numerically equivalent to the official batch 128.
-2. **Optimization & Learning Rates:** Ultralytics models utilize `optimizer: auto` (allowing the framework to configure SGD/AdamW defaults with official weight decay 0.0005). D-FINE-N utilizes AdamW with official, unscaled learning rates (0.0004 backbone, 0.0008 head/transformer, 0.0001 weight decay, and EMA restart decay of 0.9999).
-3. **Training Budgets & Augmentation Schedules:** YOLO variants are trained for 100 epochs with mosaic augmentation disabled for the final 10 epochs (`close_mosaic=10`). D-FINE-N is trained for 160 epochs with augmentation disabled at epoch 148 (`stop_epoch=148`).
-4. **Deterministic Single-Seed Evaluation:** A single deterministic seed (`seed=42`) is held constant across all models and ratio splits, strictly avoiding repeated multi-seed variance to respect compute budgets while maintaining zero confounding across negative-ratio treatments.
+### Axis 1 (RQ1) --- Ratio Sweep
+For each architecture, five training sets are constructed by holding the full 2,401-frame positive core fixed and sampling strictly nested negative subsets at uniform arithmetic 20%-point steps:
+* 0%: 0 neg / 2,401 total (`train_00_pos_only`)
+* 20%: 600 neg / 3,001 total (`train_20_low_neg`)
+* 40%: 1,600 neg / 4,001 total (`train_40_mod_neg`)
+* 60%: 3,602 neg / 6,003 total (`train_60_high_neg`)
+* 80%: 9,604 neg / 12,005 total (`train_80_max_neg`)
 
-E. Evaluation Metrics
+Nested subsets satisfy $\mathcal{D}_{\mathrm{neg}}^{(0\%)} \subset \mathcal{D}_{\mathrm{neg}}^{(20\%)} \subset \dots \subset \mathcal{D}_{\mathrm{neg}}^{(80\%)} \subset \mathcal{U}_{\mathrm{neg}}$ with fixed random seed (`seed=42`), yielding $3 \times 5 = 15$ training runs.
 
-Each trained model is evaluated on the fixed, natural-distribution test set (Section III-A) across the following core metrics:
-* **Detection Accuracy:** Precision, Recall, mAP@50, and mAP@50:95, evaluated under standard COCO evaluation protocols.
-* **Edge Deployment Metric:** False positives per 1,000 frames (FP/1k), capturing nuisance-alert frequency under continuous negative dominance independent of aggregate mAP, directly driving the operational cost translation in Section IV-C and Section V.
+### Axis 2 (RQ2) --- Hard-Negative Curation
+At each architecture's best-performing ratio $r^*$, a controlled comparison is conducted between random subsampling and hard-negative mining at strictly matched dataset cardinality:
+1. Train baseline detector $f_{\theta_0}$ on `train_00_pos_only`.
+2. Infer over candidate pool $\mathcal{U}_{\mathrm{neg}}$ (10,178 background frames).
+3. Identify hard negatives: $\mathcal{H}_{\mathrm{mined}} = \{X \in \mathcal{U}_{\mathrm{neg}} \mid \exists (\hat{c}, \hat{b}, s) \in f_{\theta_0}(X) \text{ s.t. } s \geq 0.25\}$.
+4. Rank by maximum score $s_{\max}(X)$, select top $N_{\mathrm{target}}^{(r^*)}$, and backfill deterministically if needed to match cardinality:
+   $$|\mathcal{D}_{\mathrm{train, hard}}^{(r^*)}| = |\mathcal{D}_{\mathrm{train, rand}}^{(r^*)}| = 2{,}401 + N_{\mathrm{target}}^{(r^*)}$$
 
-Because each model configuration is evaluated via a single training run without repeated seeds, cross-architecture and cross-ratio comparisons report point estimates, evaluating the practical magnitude, trend directionality, and consistency of observed differences to address RQ1 and RQ2 directly without inferential hypothesis testing.
+This yields $3 \times 2 = 6$ additional runs, establishing a total of **21 benchmark runs**.
 
-Table I: Detector Architecture & Baseline Efficiency (Parameters, FLOPs, Edge Latency)
-Table II: Experimental Run Summary (21 Training Runs across Ratios & Sampling Strategies)
-Figure 1: Cross-Architecture Negative-Ratio Sensitivity Sweep (mAP, Precision, Recall, FP/1k)
-Table III: Optimal Negative-Frame Ratio per Architecture & Extreme Endpoints
-Table IV: Random Subsampling vs. Hard-Negative Mining at Matched Best Ratio
-Table V: FP-per-1k Frames to Operational Nuisance-Alert Rate per Hour
+---
+
+## F. Frozen Training Protocol (RTX 4060 8GB)
+
+| Parameter | YOLO11n | YOLO26n | D-FINE-N |
+| :--- | :---: | :---: | :---: |
+| **Input Resolution** | 640 × 640 | 640 × 640 | 640 × 640 |
+| **Physical Batch Size** | 16 | 16 | 4 |
+| **Gradient Accumulation** | 1 | 1 | 8 |
+| **Effective Batch Size** | 16 | 16 | 32 |
+| **Epochs** | 100 | 100 | 160 |
+| **Optimizer** | `auto` | `auto` | AdamW |
+| **Backbone LR** | — | — | 0.0004 |
+| **Head / Transformer LR** | — | — | 0.0008 |
+| **Weight Decay** | 0.0005 | 0.0005 | 0.0001 |
+| **EMA Restart Decay** | — | — | 0.9999 |
+| **Augmentation Cooldown** | `close_mosaic=10` | `close_mosaic=10` | `stop_epoch=148` |
+| **Precision** | FP32 (`amp=False`)† | FP32 (`amp=False`)† | Mixed Precision (AMP) |
+| **Deterministic Seed** | 42 | 42 | 42 |
+
+† *Windows cuBLAS Precision Note:* PyTorch 2.6.0 on Windows with Ada Lovelace GPUs triggers `CUBLAS_STATUS_INTERNAL_ERROR` in FP16 batched GEMM; FP32 training is numerically stable and uses ~1.5 GB of 8 GB VRAM at batch 16.
+
+---
+
+## G. Evaluation Metrics & Claims Boundaries
+* **Detection Accuracy:** Precision ($\mathrm{P}$), Recall ($\mathrm{R}$), $\mathrm{mAP}_{50}$, $\mathrm{mAP}_{50:95}$ under standard COCO evaluation.
+* **Operational Deployment Metric:** False positives per 1,000 frames ($\mathrm{FP/1k}$) on negative benchmark test frames, and projected hourly nuisance alerts $\mathcal{A}_h$.
+* **Claims Boundary:** Single-seed point estimates report practical effect magnitude, trajectory curvature (inverted-U vs. monotonic), and cross-architecture consistency without inferential hypothesis testing ($p$-values/ANOVA).

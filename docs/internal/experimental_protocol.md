@@ -18,7 +18,7 @@ All runs adhere to a single controlled experimental variable: the **negative-fra
 | **Effective Batch Size**  |                16 |                16 |               32 |
 | **Epochs**                |               100 |               100 |              160 |
 | **Optimizer**             |            `auto` |            `auto` |            AdamW |
-| **AMP**                   |                 ✓ |                 ✓ |                ✓ |
+| **AMP**                   |       No (FP32)† |       No (FP32)† |                ✓ |
 | **Seed**                  |  **1 fixed seed** |  **1 fixed seed** | **1 fixed seed** |
 | **Native Augmentation**   |                 ✓ |                 ✓ |                ✓ |
 | **Augmentation Stop**     | `close_mosaic=10` | `close_mosaic=10` | `stop_epoch=148` |
@@ -43,6 +43,7 @@ All runs adhere to a single controlled experimental variable: the **negative-fra
 * **Official D-FINE Optimization Rates:** Unscaled official learning rates (0.0004 backbone / 0.0008 head) are retained rather than artificially scaled down for reduced batch sizes.
 * **Hardware Adaptation vs. Native Batch:** D-FINE-N's physical batch 4 + accumulation 8 is documented explicitly as an 8 GB VRAM hardware adaptation, avoiding any invalid claim of strict numerical equivalence to the official distributed batch size of 128.
 * **Cross-Ratio Hyperparameter Invariance:** Training hyperparameters, augmentation cooldowns, and optimizer configurations remain strictly identical across all 5 negative-ratio levels within each detector lineage, isolating negative-frame prevalence as the sole experimental variable.
+* **† YOLO FP32 Training (Windows cuBLAS):** YOLO11n and YOLO26n are trained in FP32 (`amp=False`). On Windows with PyTorch 2.6.0+cu124 on Ada Lovelace GPUs (RTX 4060), `cublasGemmStridedBatchedEx` raises `CUBLAS_STATUS_INTERNAL_ERROR` in FP16/BF16 batched matrix multiplication. FP32 training is numerically stable and uses only ~1.5 GB of the 8 GB VRAM budget at batch 16. D-FINE-N is unaffected and runs with `--use-amp` as per the upstream training script.
 
 ---
 

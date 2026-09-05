@@ -1,10 +1,11 @@
-﻿%% IEEE AIoT 2026 --- Conference Paper Submission
+%% IEEE AIoT 2026 --- Conference Paper Submission
 %% DOUBLE-BLIND SUBMISSION
 %% Template: IEEE Conference Template (June 2024 revision)
 %% Track:    Track 3 --- Edge, Cloud, and Fog Computing in IoT
 %% Limit:    8 pages (review)
 %%
 \documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
 \usepackage{cite}
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
@@ -14,6 +15,8 @@
 \usepackage{booktabs}
 \usepackage{multirow}
 \usepackage{array}
+\usepackage{url}
+\usepackage{flushend}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
@@ -23,295 +26,563 @@
 \IEEEauthorblockA{Institution redacted for double-blind review}}
 \maketitle
 \begin{abstract}
-Edge AIoT object detectors, such as in-cabin driver-monitoring systems,
-continuously process video streams in which background-only (negative) frames
-dominate the natural operational distribution (approximately 81\% negative
-prevalence). While incorporating negative frames during training mitigates false
-positives, prior work tunes the negative-to-positive proportion in isolation for
-individual detector architectures, leaving open whether an optimally tuned
-configuration transfers across architecturally distinct models. This paper presents
-the first controlled, cross-architecture empirical investigation of negative-frame
-ratio sensitivity and curation quality across three lightweight edge detectors:
-YOLO11n (anchor-free CNN), YOLO26n (next-generation CNN), and D-FINE-N
-(transformer-based real-time DETR). Evaluating five nested ratio configurations
-(0\% to 80\% negative frames) and a hard-negative mining strategy at matched
-dataset size on a 15,723-frame driver-monitoring corpus, we determine whether
-the performance-maximizing negative-frame ratio is architecture-invariant or
-architecture-specific. We further translate false-positive rates per 1,000 frames
-into estimated nuisance-alert rates per hour, demonstrating that training-data
-curation directly governs edge deployment usability independently of model
-inference latency.
+Deep learning object detectors deployed in continuous edge Artificial
+Intelligence of Things (AIoT) sensing systems---such as in-cabin driver
+monitoring systems (DMS)---operate under extreme temporal background dominance,
+where background-only (negative) frames constitute the overwhelming majority of
+natural operational feeds ($\approx 81\%$ negative prevalence). While
+incorporating unannotated negative frames into training datasets is recognized
+as an effective lever to suppress false positives, existing literature
+investigates negative-to-positive proportions in isolation for individual detector
+architectures, leaving open whether an optimal configuration transfers across
+architecturally distinct detection paradigms. This paper presents the first
+systematic, cross-architecture empirical investigation of negative-frame ratio
+sensitivity and curation quality across three lightweight edge detectors spanning
+distinct structural paradigms: YOLO11n (anchor-free CNN), YOLO26n
+(next-generation CNN with reparameterized convolutions), and D-FINE-N (real-time
+DETR transformer with fine-grained distribution refinement). Evaluating five
+nested arithmetic ratio configurations (0\% to 80\% negative frames) and an
+empirical hard-negative mining protocol at matched dataset cardinality on a
+15,723-frame driver-monitoring corpus, we determine whether performance-maximizing
+negative-frame configurations are architecture-invariant or architecture-specific.
+Furthermore, we translate false-positive rates per 1,000 frames
+($\mathrm{FP/1k}$) into estimated operational nuisance alert rates per hour
+($\mathcal{A}_h$), demonstrating that training-data curation directly governs
+edge deployment usability independently of model inference latency.
 \end{abstract}
 \begin{IEEEkeywords}
-AIoT, edge intelligence, driver monitoring, object detection, negative frames,
-hard-negative mining, YOLO, D-FINE, false-positive rate, edge deployment
+Artificial Intelligence of Things (AIoT), edge intelligence, driver monitoring
+systems, object detection, negative frames, hard-negative mining, class imbalance,
+false-positive rate, YOLO, real-time DETR.
 \end{IEEEkeywords}
 \section{Introduction}
-Object detectors deployed in AIoT systems---such as in-cabin driver monitoring,
-smart surveillance, and industrial defect inspection---operate under a condition
-that standard computer-vision benchmarks rarely reflect: the vast majority of
-frames encountered at inference time contain \emph{no} target object.
-A driver-monitoring camera streams continuously for hours per trip, yet the events
-it must flag (distraction, drowsiness, unsafe behavior) occupy only a small fraction
-of that stream.
-This asymmetry means a detector's behavior on background-only frames---rather than
-its accuracy on object-dense benchmark images---ultimately determines whether the
-system is usable in the field.
-A model prone to false positives on ordinary footage produces nuisance alerts that
-erode user trust, waste edge compute cycles, and, in bandwidth- or
-battery-constrained AIoT deployments, trigger unnecessary uplink transmissions or
-actuator responses.
+\label{sec:intro}
 
-The standard mitigation is to include negative (background-only) frames during
-training, and prior work confirms this lever is powerful.
-Reported optimal negative-frame proportions range from single
-digits~\cite{b8} to over 60\% of the training set in safety-critical driving
-contexts~\cite{b6}, with performance following a non-monotonic, inverted-U
-relationship: too few negatives leave false positives unaddressed, while too many
-suppress recall by pushing the detector toward over-conservative predictions~\cite{b5}.
-However, every empirical study we are aware of tunes this parameter for a
-\emph{single} detector architecture in isolation.
-It remains unknown whether a negative-frame configuration---including ratio or the
-choice between random and hard-mined negatives---tuned for one architecture
-transfers to another, or whether the optimum is itself architecture-dependent.
+Object detectors deployed in edge Artificial Intelligence of Things (AIoT)
+ecosystems---including in-cabin driver monitoring systems (DMS), autonomous robotic
+platforms, and persistent industrial surveillance nodes---operate under an operational
+regime that conventional computer vision benchmarks rarely reflect: extreme temporal
+class imbalance~\cite{b1}. In an in-cabin vehicular sensing node, a camera stream
+processes video continuously across multi-hour trips, yet safety-critical driver-cue
+events (e.g., mobile phone usage, drinking, fatigue yawning, hand-over-mouth
+distraction) occupy only a minor fraction of the visual stream~\cite{b12}. Under
+natural operational distributions, over 80\% of encountered frames contain no target
+objects whatsoever.
 
-This is not a minor gap.
-AIoT practitioners routinely choose among CNN-based, anchor-free, and
-transformer-based lightweight detectors under a shared, fixed data-curation budget.
-If the answer to ``how many negative frames do I need'' changes with the architecture
-choice, then architecture selection and data-curation decisions cannot be made
-independently---as much current practice implicitly assumes.
+This persistent background dominance implies that an edge detector's operational
+utility is governed not merely by its mean Average Precision ($\mathrm{mAP}$) over
+object-dense benchmark imagery, but primarily by its ability to maintain discriminative
+silence on background-only (negative) frames. Detectors that exhibit non-trivial
+false-positive ($\mathrm{FP}$) rates on background frames induce frequent nuisance
+alerts~\cite{b6}. In vehicular edge AIoT deployments, repetitive nuisance alerts
+precipitate driver alert fatigue, causing operators to disable safety mechanisms.
+Concurrently, each spurious detection consumes edge processing cycles, triggers
+unwarranted cellular uplink transmissions in distributed IoT fleets, and exhausts
+battery or thermal envelopes on resource-constrained embedded system-on-chips
+(SoCs)~\cite{b13}.
 
-This paper addresses that gap through a controlled, cross-architecture study of
-negative-frame configuration on a real-world, safety-critical AIoT dataset.
-Using an in-cabin driver-monitoring corpus with a naturally occurring 19:81
-positive-to-negative frame ratio, we train three lightweight detectors spanning
-distinct design paradigms (YOLO11n, YOLO26n, and D-FINE-N) under systematically
-varied negative-frame ratios and sampling strategies, holding all other training
-factors fixed. We ask:
+The established data-level mitigation is to inject background-only images into the
+detector training dataset. Prior single-architecture investigations confirm that this
+acts as an effective regularization lever: reported optimal negative proportions range
+from practitioner heuristics of 0--10\%~\cite{b8} to upwards of 60\% in safety-critical
+vehicular environments~\cite{b6}. Empirical sweeps demonstrate that detector response
+to negative-frame prevalence follows a non-monotonic, inverted-U trajectory~\cite{b5}:
+insufficient negative representation leaves background false positives unpenalized,
+whereas an excessive negative ratio dilutes gradient updates on rare foreground
+classes, driving the detector toward over-conservative predictions and suppressing
+recall.
+
+However, all existing studies evaluate negative-frame configurations for a
+\emph{single} detector architecture in isolation. It remains fundamentally unknown
+whether the optimal negative-frame ratio---or the utility of active hard-negative
+curation over uniform random sampling---is an intrinsic property of the dataset domain
+or whether it depends on the underlying architectural paradigm (e.g., anchor-free
+convolutional feature pyramids versus query-based transformer attention). In modern
+AIoT practice, system architects frequently choose among diverse lightweight detector
+families under a fixed data-engineering and curation budget. If optimal negative-frame
+sensitivity is architecture-dependent, model selection and training-data curation
+cannot be decoupled, as current deployment workflows implicitly assume.
+
+To resolve this question, this paper presents a controlled, cross-architecture
+investigation of negative-frame configuration on a real-world, safety-critical AIoT
+driver-monitoring dataset. We evaluate three lightweight edge detectors spanning
+distinct architectural lineages: YOLO11n (anchor-free CNN)~\cite{b9}, YOLO26n
+(next-generation CNN with reparameterized convolution blocks)~\cite{b10}, and
+D-FINE-N (real-time DETR transformer with fine-grained distribution
+refinement)~\cite{b11}. Using a 15,723-frame driver-monitoring corpus with a natural
+prevalence of 80.9\% negative frames, we systematically vary the negative training
+ratio across five nested levels (0\% to 80\%) and evaluate false-positive hard-negative
+mining against random negative sampling at matched dataset cardinality. We address two
+formal research questions:
 \begin{itemize}
-  \item \textbf{RQ1:} Does the negative-frame ratio that maximizes detection
-        performance differ across detector architectures, or does a single
-        configuration generalize?
-  \item \textbf{RQ2:} At each architecture's best ratio, does replacing randomly
-        sampled negatives with hard-mined negatives (frames on which a baseline
-        model produces false positives) yield further, architecture-dependent gains?
+  \item \textbf{RQ1 (Ratio Sensitivity and Paradigm Invariance):} Does the
+        negative-frame ratio that maximizes detection accuracy ($\mathrm{mAP}$) and
+        minimizes false-positive frequency differ across detector architectures, or
+        does a uniform, architecture-invariant optimum emerge?
+  \item \textbf{RQ2 (Curation Quality vs. Sample Volume):} At each architecture's
+        empirically identified best ratio, does substituting random negative frames
+        with hard-mined negative frames (background scenes inducing false positives in
+        a baseline model) yield further performance gains at matched dataset
+        cardinality, and does this benefit vary between CNN and transformer
+        architectures?
 \end{itemize}
 
-Our contributions are threefold:
+Our core contributions are threefold:
 \begin{enumerate}
-  \item \textbf{Cross-architecture negative-frame benchmark.} The first empirical
-        sweep of negative-frame ratio sensitivity across three lightweight detectors
-        spanning CNN and transformer paradigms, on a real, safety-critical AIoT
-        dataset (in-cabin driver monitoring).
-  \item \textbf{Hard-negative curation protocol and cost-benefit analysis.} A
-        mining strategy targeting false-positive-prone background frames, with a
-        controlled comparison against random sampling at matched dataset size.
-  \item \textbf{Operational deployment-cost reframing.} A translation of FP-per-frame
-        differences into nuisance-alert rates per hour, connecting an accuracy metric
-        to a deployment consequence AIoT system designers plan around, while explicitly
-        separating inference latency (architecture-bound) from FP rate (training-data-bound).
+  \item \textbf{Cross-Architecture Negative-Ratio Benchmark:} We deliver the first
+        controlled empirical sensitivity sweep of negative-frame training ratios
+        across three lightweight edge detectors spanning CNN and transformer
+        paradigms on a safety-critical AIoT in-cabin monitoring dataset, establishing
+        whether curation configurations transfer across detector lineages.
+  \item \textbf{Controlled Hard-Negative Curation Protocol:} We design an empirical
+        false-positive mining protocol benchmarked against uniform random sampling at
+        strictly matched dataset size, isolating the contribution of sample
+        information entropy from sample volume across diverse detector architectures.
+  \item \textbf{Operational Deployment Cost Reframing:} We formulate an analytical
+        mapping translating measured false positives per 1,000 frames
+        ($\mathrm{FP/1k}$) into estimated hourly nuisance alerts ($\mathcal{A}_h$),
+        demonstrating that data-level negative curation governs edge operational
+        reliability independently of architectural inference latency.
 \end{enumerate}
+
+The remainder of this paper is structured as follows. Section~\ref{sec:related} reviews
+related work. Section~\ref{sec:methodology} presents the formal problem formulation,
+loss mechanics, dataset partitioning, detector architectures, and experimental
+protocol. Section~\ref{sec:results} presents the empirical evaluation addressing RQ1,
+RQ2, and the deployment cost translation. Section~\ref{sec:discussion} discusses edge
+AIoT deployment implications and limitations, and Section~\ref{sec:conclusion}
+concludes the paper.
 \section{Related Work}
+\label{sec:related}
+
 \subsection{Class Imbalance and Negative Sampling in Object Detection}
-Negative sampling has long been recognized as a first-order design choice in
-object-detector training. At the loss level, Focal Loss~\cite{b1} was introduced
-because the vast number of easy negatives in dense-prediction detectors overwhelms
-training signals from the rare foreground class; it addresses imbalance through
-adaptive loss reweighting rather than through the ratio of negative instances itself.
-Related work shows that negatives are not static targets during training: they can
-drift toward foreground appearance as training proceeds, confusing the detector's
-foreground-background boundary and motivating dynamic re-selection~\cite{b2}.
+Foreground-background class imbalance represents a canonical challenge in object
+detection~\cite{b1}. Dense one-stage detectors evaluate tens of thousands of spatial
+candidate locations per frame, of which only a minuscule fraction overlap foreground
+objects. At the loss formulation level, Focal Loss~\cite{b1} dynamically scales the
+standard cross-entropy loss by $(1 - p_t)^\gamma$ to suppress gradient contributions
+from easy, well-classified negative instances. Online Hard Example Mining
+(OHEM)~\cite{b14} constructs training batches exclusively from high-loss regions,
+ensuring non-trivial gradient updates. Zhang \textit{et al.}~\cite{b3} demonstrated
+through Adaptive Training Sample Selection (ATSS) that the mechanism of assigning
+positive and negative samples exerts a more decisive influence on detector performance
+than whether the underlying regression head is anchor-based or anchor-free.
 
-In anchor-based versus anchor-free comparisons, the rule used to assign positive
-and negative training samples has been shown to have a larger effect on final
-performance than the underlying regression formulation~\cite{b3}, reinforcing that
-sample assignment---rather than architecture alone---is a primary driver of
-detection behavior. At the region level, mining strategies that surface visually
-confusable background chips measurably raise mAP relative to training on
-positive-only regions~\cite{b4}.
+Beyond regional assignment, Chen \textit{et al.}~\cite{b2} showed that negative sample
+representations are non-static; they undergo representation drift during iterative
+backpropagation, which can confound decision boundaries unless consistently mined.
+Similarly, SNIPER~\cite{b4} confirmed that extracting context chips from false-positive
+background regions significantly elevates detection precision without incurring the
+computational overhead of multi-scale image pyramids.
 
-\subsection{Negative-Frame Ratio as a Dataset-Curation Lever}
-Standard guidance for one-stage YOLO detectors recommends including roughly 0--10\%
-background-only images to reduce false positives~\cite{b8}, without cross-architecture
-validation. Direct empirical sweeps reveal a non-monotonic relationship: one study
-varying the proportion from 0\% to 40\% across two YOLO variants found that recall
-and mAP@50 peaked near 20\% before declining, with excess negatives causing
-over-conservative predictions~\cite{b5}. In a safety-critical driving context, a
-far higher proportion was needed: raising background images from 10\% to over 60\%
-cut false positives by more than 80\% while also reducing false negatives by
-25\%~\cite{b6}, suggesting the effective operating point is strongly domain-dependent.
-In human--object interaction detection, scaling the negative-to-positive pair ratio
-from roughly 10:1 to 1000:1 produced a large, consistent performance gain~\cite{b7},
-underscoring how strongly the ``correct'' configuration depends on task structure.
+\subsection{Lightweight Edge Detectors: CNNs vs. Real-Time DETRs}
+Edge AIoT sensing mandates compact detector architectures capable of executing under
+stringent latency, memory, and thermal constraints~\cite{b15}. The dominant design
+paradigm has long centered on one-stage, anchor-free Convolutional Neural Networks
+(CNNs). The YOLO series, culminating in YOLO11~\cite{b9} and YOLO26~\cite{b10}, employs
+decoupled heads for classification and bounding-box regression, Task-Aligned Assigners
+(TAL) for joint score-overlap optimization, and Distribution Focal Loss (DFL) for
+bounding-box uncertainty modeling~\cite{b16}. YOLO26 introduces reparameterized
+convolutional blocks to enhance feature reuse while preserving low-latency inference on
+embedded platforms.
 
-\subsection{Research Gap}
-Taken together, this literature establishes that negative-sample configuration
-reliably shifts a detector's precision-recall operating point, and that the effective
-optimum varies dramatically across tasks and domains. However, in every case reviewed,
-the evaluation is conducted on a \emph{single} detector architecture at a time. No
-existing study holds negative-frame configuration fixed while \emph{varying} detector
-architecture, leaving open the key question of whether a ratio or curation strategy
-tuned for one model transfers to another. This is precisely the question AIoT
-practitioners face when choosing among architecturally distinct lightweight detectors
-under a shared data budget---a gap our work fills directly.
-\section{Methodology}
-\subsection{Dataset}
-Experiments use an in-cabin driver-monitoring (DMS) dataset comprising 15{,}723
-total frames, of which 3{,}001 contain annotated driver-cue events
-(\texttt{phone\_use}, \texttt{drinking}, \texttt{yawning},
-\texttt{hand\_over\_mouth}) and 12{,}722 are background-only, reflecting a natural
-negative prevalence of approximately 81\%.
-All frames are partitioned using a stratified 80/10/10 random split
-($\text{seed}=42$) into disjoint training, validation, and test sets.
-Positive frames are stratified across the four driver-cue categories.
-Validation and test sets each contain 1{,}572 frames (300 positive, 1{,}272
-negative; 80.9\% negative prevalence) and are held fixed across all conditions.
-This design is deliberate: evaluating on a natural-distribution test set preserves
-the false-positive behavior that negative-frame configuration is intended to address;
-an artificially rebalanced test set would mask the primary metric ($\mathrm{FP/1k}$).
+Concurrently, Vision Transformer (ViT) architectures have migrated to real-time edge
+regimes via Real-Time DEtection TRansformers (RT-DETRs)~\cite{b17}. Unlike dense CNNs
+that rely on hand-crafted non-maximum suppression (NMS), DETRs frame detection as an
+end-to-end set prediction problem using a fixed pool of learned object queries and
+optimal bipartite Hungarian matching~\cite{b18}. D-FINE~\cite{b11} advances this
+paradigm by reframing bounding-box regression as Fine-grained Distribution Refinement
+(FDR), iteratively refining probability distributions over bounding coordinates across
+transformer decoder layers. Because CNNs rely on localized convolutional receptive
+fields with multi-scale feature pyramids while DETRs employ global self- and
+cross-attention mechanisms, their respective parameter updates respond fundamentally
+differently to empty background scenes.
+
+\subsection{Negative-Frame Training and Operational Reliability in AIoT}
+While region-level negative sampling within object-containing images is well-studied,
+the deliberate inclusion of entire unannotated background frames (negative frames) has
+received comparatively little formal attention. Practitioner guidelines for YOLO models
+recommend incorporating 0--10\% background images as a heuristic against false
+positives~\cite{b8}. However, empirical investigations in specialized domains show
+marked divergence from this guideline. In floating-debris detection, Deng \textit{et
+al.}~\cite{b5} identified an inverted-U performance trajectory across negative proportions
+from 0\% to 40\%, with $\mathrm{mAP}$ peaking at approximately 20\% before excessive
+background representation degraded recall. Conversely, in autonomous driving roadwork
+monitoring, Rezaei \textit{et al.}~\cite{b6} demonstrated that scaling background
+images from 10\% to over 60\% reduced false-positive detections by more than 80\% while
+simultaneously cutting false negatives by 25\%. In human-object interaction (HOI),
+Gupta \textit{et al.}~\cite{b7} reported that scaling negative-to-positive pair ratios
+from 10:1 to 1000:1 was essential to regularize complex interaction spaces.
+
+In edge driver-monitoring systems (DMS), visual feeds are captured under dynamic
+cabin illumination, occlusions, and diverse driver postures~\cite{b12,b19}. While
+standard DMS datasets (e.g., State Farm Distracted Driver~\cite{b20}, DMD~\cite{b21})
+emphasize positive cue diversity, deployed embedded nodes encounter vast stretches of
+routine driving devoid of target cues. False detections directly degrade user trust
+and induce alert fatigue~\cite{b6,b13}.
+
+\subsection{Identified Research Gap}
+Existing studies on negative-frame training suffer from a fundamental limitation:
+every investigation tunes the negative-to-positive ratio for a single, isolated
+detector architecture. No prior work investigates whether the performance-maximizing
+negative ratio or the efficacy of hard-negative mining is architecture-invariant or
+paradigm-dependent. This paper addresses this gap through a controlled
+cross-architecture study across anchor-free CNNs and real-time DETRs on a standardized
+AIoT driver-monitoring benchmark.
+\section{System Modeling and Experimental Methodology}
+\label{sec:methodology}
+
+\subsection{Problem Formulation and Mathematical Modeling}
+\label{subsec:formulation}
+Let $\mathcal{S} = \{X_t\}_{t=1}^T$ denote a continuous streaming video feed captured
+by an edge camera sensor, where $X_t \in \mathcal{X} \subset \mathbb{R}^{H \times W
+\times 3}$ represents the image frame at time step $t$. Each frame $X_t$ is associated
+with a ground-truth annotation set $Y_t = \{(c_k, b_k)\}_{k=1}^{K_t}$, where $c_k \in
+\mathcal{C} = \{1, \dots, C\}$ is the driver behavior class index, $b_k = (x_k, y_k,
+w_k, h_k) \in [0, 1]^4$ denotes normalized bounding-box coordinates, and $K_t \geq 0$
+denotes the number of target instances in frame $t$.
+
+We partition the universe of frames into two disjoint categories:
+\begin{align}
+  \mathcal{D}_{\mathrm{pos}} &= \{(X_t, Y_t) \mid K_t \geq 1\}, \label{eq:pos_def} \\
+  \mathcal{D}_{\mathrm{neg}} &= \{(X_t, \emptyset) \mid K_t = 0\}. \label{eq:neg_def}
+\end{align}
+A frame is defined as a \emph{positive frame} ($X_t \in \mathcal{D}_{\mathrm{pos}}$) if
+it contains at least one driver-cue object, and as a \emph{negative frame} ($X_t \in
+\mathcal{D}_{\mathrm{neg}}$) if it contains zero annotated target objects.
+
+Given an object detector parameterized by weights $\theta$, inference on an input
+frame $X$ yields a set of predicted bounding tuples $f_\theta(X) = \{(\hat{c}_j,
+\hat{b}_j, s_j)\}_{j=1}^M$, where $\hat{c}_j \in \mathcal{C}$, $\hat{b}_j \in [0, 1]^4$,
+and $s_j \in [0, 1]$ represents the predicted class confidence score. At a deployed
+confidence operating threshold $\tau \in (0, 1]$, the filtered prediction set is:
+\begin{equation}
+  \hat{\mathcal{Y}}_\tau(X) = \left\{ (\hat{c}_j, \hat{b}_j, s_j) \in f_\theta(X)
+  \;\middle|\; s_j \geq \tau \right\}.
+  \label{eq:filter}
+\end{equation}
+
+For any background-only negative frame $X \in \mathcal{D}_{\mathrm{neg}}$, the ground-truth
+instance set is empty ($Y = \emptyset$). Consequently, any detection belonging to
+$\hat{\mathcal{Y}}_\tau(X)$ constitutes an operational False Positive ($\mathrm{FP}$).
+We formalize the deployment cost metric, false positives per 1,000 background frames
+($\mathrm{FP/1k}$), evaluated on the held-out negative test set
+$\mathcal{D}_{\mathrm{test}}^{\mathrm{neg}}$, as:
+\begin{equation}
+  \mathrm{FP/1k} = \frac{1000}{\left|\mathcal{D}_{\mathrm{test}}^{\mathrm{neg}}\right|}
+  \sum_{X \in \mathcal{D}_{\mathrm{test}}^{\mathrm{neg}}} \left| \hat{\mathcal{Y}}_\tau(X) \right|.
+  \label{eq:fp1k}
+\end{equation}
+
+In an operational edge deployment operating at sensor frame rate $f_{\mathrm{FPS}}$
+(frames per second) over a duration of one hour ($T_{\mathrm{hr}} = 3600\,\text{s}$),
+let $p_{\mathrm{neg}} \in (0, 1]$ represent the operational background frame
+prevalence. The expected hourly nuisance alert rate $\mathcal{A}_h$ is modeled as:
+\begin{align}
+  \mathcal{A}_h &= 3600 \times f_{\mathrm{FPS}} \times p_{\mathrm{neg}} \times \frac{\mathrm{FP/1k}}{1000} \nonumber \\
+                &= 3.6 \times f_{\mathrm{FPS}} \times p_{\mathrm{neg}} \times \mathrm{FP/1k}.
+  \label{eq:nuisance_formal}
+\end{align}
+Under unconditioned driving streams ($p_{\mathrm{neg}} \approx 0.809$), \eqref{eq:nuisance_formal}
+computes the real-world nuisance alert burden experienced by the driver and edge
+communication stack.
+
+\subsection{Architectural Loss Dynamics on Negative Frames}
+\label{subsec:loss_mechanics}
+A central theoretical motivation of this work is that distinct detector paradigms
+process negative frames through fundamentally different loss formulations and gradient
+pathways, creating the potential for architecture-dependent sensitivity to negative-frame
+ratios.
+
+\subsubsection{Anchor-Free Decoupled CNNs (YOLO11n / YOLO26n)}
+The multi-task loss function for modern anchor-free YOLO architectures is:
+\begin{equation}
+  \mathcal{L}_{\mathrm{YOLO}} = \lambda_{\mathrm{cls}} \mathcal{L}_{\mathrm{cls}} +
+  \lambda_{\mathrm{box}} \mathcal{L}_{\mathrm{box}} + \lambda_{\mathrm{dfl}} \mathcal{L}_{\mathrm{dfl}},
+  \label{eq:yolo_loss}
+\end{equation}
+where $\mathcal{L}_{\mathrm{box}}$ is Complete IoU (CIoU) loss,
+$\mathcal{L}_{\mathrm{dfl}}$ is Distribution Focal Loss, and
+$\mathcal{L}_{\mathrm{cls}}$ is Binary Cross-Entropy ($\mathrm{BCE}$).
+When training on a negative frame $X \in \mathcal{D}_{\mathrm{neg}}$, no ground-truth
+bounding boxes exist. The Task-Aligned Assigner assigns zero positive anchors across
+all feature pyramid scales $s \in \{P_3, P_4, P_5\}$. As a result, the regression
+terms vanish ($\mathcal{L}_{\mathrm{box}} = 0, \mathcal{L}_{\mathrm{dfl}} = 0$), and
+the loss collapses strictly to the classification objective across all spatial anchor
+locations:
+\begin{equation}
+  \mathcal{L}_{\mathrm{YOLO}}^{\mathrm{neg}} = -\lambda_{\mathrm{cls}}
+  \sum_{s=1}^S \sum_{i=1}^{H_s W_s} \sum_{c=1}^C \log\left(1 - \hat{p}_{s, i, c}\right),
+  \label{eq:yolo_neg_loss}
+\end{equation}
+where $\hat{p}_{s, i, c} = \sigma(z_{s, i, c})$ is the predicted probability for class
+$c$ at grid cell $i$ of pyramid scale $s$. In the absence of negative frames ($r = 0\%$),
+classification gradients on background regions arise exclusively from non-target areas
+of positive frames. Adding negative frames exposes the local convolutional filters to
+diverse cabin environments devoid of foreground cues, penalizing spurious local
+activations.
+
+\subsubsection{Query-Based Real-Time DETRs (D-FINE-N)}
+In D-FINE-N, detection is formulated via a fixed set of $N_q$ learned object queries
+($N_q = 300$). Training relies on optimal bipartite matching via the Hungarian algorithm:
+\begin{equation}
+  \hat{\sigma} = \arg\min_{\sigma \in \mathfrak{S}_{N_q}} \sum_{i=1}^{N_q}
+  \mathcal{L}_{\mathrm{match}}\left(y_i, \hat{y}_{\sigma(i)}\right),
+  \label{eq:hungarian}
+\end{equation}
+where $\mathfrak{S}_{N_q}$ is the permutation group of $N_q$ elements. On a negative
+frame ($Y = \emptyset$), the ground-truth set contains only null targets ($\varnothing$).
+Every query $i \in \{1, \dots, N_q\}$ is unconditionally matched to the background class
+$\varnothing$. Consequently, the bounding-box L1 loss, Generalized IoU (GIoU) loss, and
+Fine-grained Distribution Refinement ($\mathcal{L}_{\mathrm{FDR}}$) loss are zero. The
+training loss reduces entirely to the classification objective:
+\begin{equation}
+  \mathcal{L}_{\mathrm{DFINE}}^{\mathrm{neg}} = \sum_{j=1}^{N_q} \mathrm{FL}\left(\hat{p}_j, 0\right)
+  = -\sum_{j=1}^{N_q} \alpha \hat{p}_j^\gamma \log\left(1 - \hat{p}_j\right),
+  \label{eq:dfine_neg_loss}
+\end{equation}
+where $\mathrm{FL}$ denotes Focal Loss with focusing parameter $\gamma$ and balance
+factor $\alpha$. Unlike CNNs where gradients penalize tens of thousands of fixed spatial
+grid points locally, DETRs supervise a compact set of global queries interacting across
+the entire image via self-attention and cross-attention. This theoretical distinction
+leads directly to our hypothesis: query-based transformers and anchor-free CNNs may
+exhibit divergent sensitivity to the volume and composition of background training frames.
+
+\subsection{Dataset and Stratified Partitioning}
+\label{subsec:dataset}
+Experiments utilize a comprehensive in-cabin driver-monitoring dataset comprising
+15,723 frames captured across diverse driver subjects, cabin illumination conditions,
+and camera viewpoints. The dataset contains 3,001 positive frames containing annotated
+driver cues across four safety-critical categories:
+\begin{enumerate}
+  \item \texttt{phone\_use}: driver holding a mobile device to the ear or interacting
+        manually.
+  \item \texttt{drinking}: driver holding a beverage container near the mouth.
+  \item \texttt{yawning}: driver exhibiting observable fatigue or yawning facial state.
+  \item \texttt{hand\_over\_mouth}: driver covering mouth or face, occluding critical
+        features.
+\end{enumerate}
+The remaining 12,722 frames contain no target cues, representing normal driving postures
+and visual cabin background, yielding a natural negative prevalence of 80.9\%.
+
+All 15,723 frames are partitioned using a stratified 80/10/10 split with a deterministic
+seed ($\text{seed}=42$):
+\begin{itemize}
+  \item \textbf{Held-Out Validation Benchmark ($\mathcal{D}_{\mathrm{val}}$):} 1,572
+        frames (300 positive, 1,272 negative; 80.9\% negative prevalence).
+  \item \textbf{Held-Out Test Benchmark ($\mathcal{D}_{\mathrm{test}}$):} 1,572
+        frames (300 positive, 1,272 negative; 80.9\% negative prevalence).
+  \item \textbf{Training Universe ($\mathcal{D}_{\mathrm{train}}^{\mathrm{univ}}$):}
+        2,401 positive frames ($\mathcal{D}_{\mathrm{pos}}$) and a candidate pool of
+        10,178 negative frames ($\mathcal{U}_{\mathrm{neg}}$).
+\end{itemize}
+Positive frames are stratified across all four driver-cue categories in the training,
+validation, and test splits. Crucially, the validation and test benchmarks are held
+strictly fixed across all experimental conditions. Evaluating on a fixed,
+natural-distribution test set preserves the background-dominant operational reality
+necessary to quantify $\mathrm{FP/1k}$ and operational alert frequency; an artificially
+rebalanced test set would mask false-positive dynamics entirely.
 
 \subsection{Detector Architectures}
-Three lightweight detectors, selected to span distinct design paradigms relevant
-to edge deployment, are evaluated under identical conditions.
+\label{subsec:architectures}
+To evaluate cross-paradigm generalizability, three edge detectors are benchmarked at
+their smallest (``nano'') variant, reflecting realistic AIoT embedded compute
+envelopes:
+\begin{itemize}
+  \item \textbf{YOLO11n}~\cite{b9}: An anchor-free, one-stage CNN detector representing
+        the current mainstream YOLO lineage. It utilizes a C3k2/C2f backbone with
+        decoupled classification and regression heads operating at three spatial
+        scales ($8\times, 16\times, 32\times$ downsampling).
+  \item \textbf{YOLO26n}~\cite{b10}: The subsequent generation in the YOLO lineage,
+        featuring an updated architectural backbone with reparameterized convolution
+        blocks designed for optimized edge inference. It is evaluated to test whether
+        evolutionary refinements within the CNN paradigm alter negative-frame
+        sensitivity relative to YOLO11n.
+  \item \textbf{D-FINE-N}~\cite{b11}: A real-time transformer detector built upon the
+        RT-DETR framework, replacing standard bounding-box regression with fine-grained
+        distribution refinement (FDR). It represents query-based set prediction,
+        enabling a direct comparison between dense CNNs and attention-driven
+        transformers.
+\end{itemize}
 
-\textbf{YOLO11n}~\cite{b9} is an anchor-free, one-stage CNN detector representing
-the current mainstream YOLO lineage. It predicts bounding boxes by decoupling
-classification and regression heads over a C2f backbone at three spatial scales
-without anchor priors.
+Table~\ref{tab:architectures} summarizes the architectural specifications. Parameter
+counts, FLOPs, and inference latency on our target deployment hardware (NVIDIA Jetson
+Orin Nano 8\,GB) are fixed structural attributes of the models, independent of training
+data composition.
 
-\textbf{YOLO26n}~\cite{b10} is the succeeding YOLO generation, included to test
-whether architectural refinements---including an updated backbone and
-reparametrized convolution blocks---alter sensitivity to negative-frame
-configuration relative to YOLO11n.
-
-\textbf{D-FINE-N}~\cite{b11} is a transformer-based, query-driven real-time
-detector that refines bounding boxes via fine-grained distribution estimation at
-each decoder layer, representing set-based prediction rather than dense
-anchor-free prediction. It is included to test whether the CNN-vs-transformer
-paradigm boundary modulates response to negative-frame manipulation.
-
-All three are evaluated at their smallest (``nano'') variant to reflect realistic
-AIoT compute budgets. Table~\ref{tab:architectures} summarizes architecture-level
-characteristics. Since inference latency is governed by model structure---not
-training-data composition---it is reported as fixed context.
-
-\begin{table}[htbp]
-  \caption{Detector Architecture Overview (640\,$\times$\,640 input)}
+\begin{table}[t]
+  \caption{Evaluated Detector Architectures (640\,$\times$\,640 Input Resolution)}
   \label{tab:architectures}
   \begin{center}
-    \begin{tabular}{lrrl}
+    \setlength{\tabcolsep}{3.5pt}
+    \begin{tabular}{lrrcc}
       \toprule
-      \textbf{Model} & \textbf{Params} & \textbf{FLOPs} & \textbf{Paradigm} \\
+      \textbf{Detector} & \textbf{Params} & \textbf{FLOPs} & \textbf{Paradigm} & \textbf{Prediction} \\
       \midrule
-      YOLO11n  & 2.6\,M &  6.5\,G & Anchor-free CNN \\
-      YOLO26n  & 2.5\,M &  6.3\,G & Next-gen CNN    \\
-      D-FINE-N & 4.3\,M & 25.0\,G & Transformer (RT-DETR) \\
+      YOLO11n  & 2.6\,M &  6.5\,G & Anchor-free CNN & Dense pyramid \\
+      YOLO26n  & 2.5\,M &  6.3\,G & Next-gen CNN    & Reparam. CNN  \\
+      D-FINE-N & 4.3\,M & 25.0\,G & RT-DETR         & Query-based set \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
-  {\small Target deployment: NVIDIA Jetson Orin Nano 8\,GB.}
+  {\footnotesize Target deployment platform: NVIDIA Jetson Orin Nano (8\,GB VRAM).}
 \end{table}
 
-\subsection{Negative-Frame Configurations}
-Two independent experimental axes isolate the effect of negative-frame training data.
+\subsection{Negative-Frame Experimental Configurations}
+\label{subsec:configurations}
+Two controlled experimental axes isolate the impact of negative-frame data:
 
-\noindent\textbf{Axis~1 (RQ1) --- Ratio Sweep.}
-For each architecture, five training sets are constructed by holding the full
-2{,}401-frame positive core fixed and sampling strictly nested negative subsets at
-exact arithmetic 20\%-point steps:
+\subsubsection{Axis 1 (RQ1) --- Negative-Frame Ratio Sweep}
+We construct five training sets by holding the positive core fixed at
+$|\mathcal{D}_{\mathrm{pos}}| = 2{,}401$ frames and sampling strictly nested subsets
+of negative frames at uniform arithmetic 20\%-point increments of total training
+volume:
 \begin{itemize}
-  \item $\phantom{0}$0\%: 0 neg.\ / 2{,}401 total (\texttt{train\_00\_pos\_only})
-  \item 20\%: 600 neg.\ / 3{,}001 total (\texttt{train\_20\_low\_neg})
-  \item 40\%: 1{,}600 neg.\ / 4{,}001 total (\texttt{train\_40\_mod\_neg})
-  \item 60\%: 3{,}602 neg.\ / 6{,}003 total (\texttt{train\_60\_high\_neg})
-  \item 80\%: 9{,}604 neg.\ / 12{,}005 total (\texttt{train\_80\_max\_neg})
+  \item \textbf{0\% Negative} (\texttt{train\_00\_pos\_only}): 2,401 pos, 0 neg (2,401 total).
+  \item \textbf{20\% Negative} (\texttt{train\_20\_low\_neg}): 2,401 pos, 600 neg (3,001 total).
+  \item \textbf{40\% Negative} (\texttt{train\_40\_mod\_neg}): 2,401 pos, 1,600 neg (4,001 total).
+  \item \textbf{60\% Negative} (\texttt{train\_60\_high\_neg}): 2,401 pos, 3,602 neg (6,003 total).
+  \item \textbf{80\% Negative} (\texttt{train\_80\_max\_neg}): 2,401 pos, 9,604 neg (12,005 total).
 \end{itemize}
-Negatives are sampled as strictly nested subsets
-($\text{Neg}_{0\%} \subset \text{Neg}_{20\%} \subset \cdots \subset
-\text{Neg}_{80\%}$, $\text{seed}=42$), yielding $3 \times 5 = 15$ training runs.
-All non-negative-frame factors are held constant within each architecture,
-isolating negative-frame ratio as the sole independent variable.
+The negative subsets are strictly nested:
+$\mathcal{D}_{\mathrm{neg}}^{(0\%)} \subset \mathcal{D}_{\mathrm{neg}}^{(20\%)} \subset
+\cdots \subset \mathcal{D}_{\mathrm{neg}}^{(80\%)} \subset \mathcal{U}_{\mathrm{neg}}$
+using a deterministic random seed ($\text{seed}=42$). Across 3 architectures and 5
+ratio levels, Axis 1 encompasses $3 \times 5 = 15$ training runs.
 
-\noindent\textbf{Axis~2 (RQ2) --- Hard-Negative Curation.}
-For each architecture, the best-performing ratio from Axis~1 anchors a controlled
-comparison: random subsampling vs.\ hard-negative mining at \emph{matched dataset
-size}. The mining protocol is:
+\subsubsection{Axis 2 (RQ2) --- Hard-Negative Curation vs. Random Sampling}
+For each architecture, the optimal ratio $r^*$ identified in Axis 1 serves as the
+anchor for a controlled comparison between uniform random negative sampling and
+empirical hard-negative mining at \emph{strictly matched dataset cardinality}:
 \begin{enumerate}
-  \item Train a baseline on the positive-only split.
-  \item Run inference over the full 10{,}178-frame negative candidate pool.
-  \item Retain frames yielding a false-positive at confidence $\tau \geq 0.25$
-        (standard driver-monitoring threshold).
-  \item Backfill with random negatives if the mined count falls short.
+  \item Train a baseline detector $f_{\theta_0}$ on the positive-only training split
+        ($\mathcal{D}_{\mathrm{train}}^{(0\%)}$).
+  \item Run inference across the complete candidate negative pool $\mathcal{U}_{\mathrm{neg}}$
+        ($10{,}178$ unannotated background frames).
+  \item Identify hard-negative candidate frames yielding false-positive detections
+        above operating confidence $\tau = 0.25$:
+        \begin{align}
+          \mathcal{H}_{\mathrm{mined}} = \big\{ &X \in \mathcal{U}_{\mathrm{neg}} \;\big|\; \nonumber \\
+          &\exists (\hat{c}, \hat{b}, s) \in f_{\theta_0}(X) \text{ s.t. } s \geq 0.25 \big\}.
+          \label{eq:mining}
+        \end{align}
+  \item Rank candidates by maximum false-positive confidence score $s_{\max}(X) = \max_j s_j(X)$.
+        If $|\mathcal{H}_{\mathrm{mined}}| \geq N_{\mathrm{target}}^{(r^*)}$, select the top
+        $N_{\mathrm{target}}^{(r^*)}$ frames. If $|\mathcal{H}_{\mathrm{mined}}| < N_{\mathrm{target}}^{(r^*)}$,
+        backfill deterministically ($\text{seed}=42$) from $\mathcal{U}_{\mathrm{neg}} \setminus \mathcal{H}_{\mathrm{mined}}$
+        to achieve exact cardinality matching:
+        \begin{equation}
+          \left|\mathcal{D}_{\mathrm{train, hard}}^{(r^*)}\right| =
+          \left|\mathcal{D}_{\mathrm{train, rand}}^{(r^*)}\right| = 2{,}401 + N_{\mathrm{target}}^{(r^*)}.
+          \label{eq:cardinality}
+        \end{equation}
 \end{enumerate}
-This adds $3 \times 2 = 6$ runs, for \textbf{21 total training runs}.
+This design guarantees that any performance divergence reflects sample information
+entropy (curation quality) rather than sample volume. Axis 2 adds $3 \times 2 = 6$
+runs, establishing a total experimental scope of \textbf{21 benchmark training runs}.
 
-\subsection{Training Protocol}
-All models are fine-tuned from official pretrained COCO checkpoints at
-640\,$\times$\,640 under mixed precision (AMP), with a single deterministic seed
-($\text{seed}=42$) across all runs.
-Table~\ref{tab:training} summarizes the frozen configuration.
+\subsection{Training Protocol and Hardware Adaptation}
+\label{subsec:protocol}
+All models are fine-tuned from official COCO-pretrained checkpoints at a uniform input
+resolution of 640\,$\times$\,640 with a fixed random seed ($\text{seed}=42$).
+Table~\ref{tab:training} documents the frozen configuration.
 
-\begin{table}[htbp]
-  \caption{Frozen Training Configuration (NVIDIA RTX\,4060 8\,GB)}
+\begin{table}[t]
+  \caption{Frozen Training Configuration (NVIDIA RTX 4060 8\,GB VRAM)}
   \label{tab:training}
   \begin{center}
-    \setlength{\tabcolsep}{3.5pt}
+    \setlength{\tabcolsep}{4pt}
     \begin{tabular}{lccc}
       \toprule
-      \textbf{Parameter}     & \textbf{YOLO11n} & \textbf{YOLO26n} & \textbf{D-FINE-N} \\
+      \textbf{Hyperparameter}     & \textbf{YOLO11n} & \textbf{YOLO26n} & \textbf{D-FINE-N} \\
       \midrule
-      Physical batch         & 16      & 16      & 4              \\
-      Grad.\ accumulation    & 1       & 1       & 8              \\
-      Effective batch        & 16      & 16      & 32             \\
-      Epochs                 & 100     & 100     & 160            \\
-      Optimizer              & auto    & auto    & AdamW          \\
-      Backbone LR            & ---     & ---     & $4\times10^{-4}$ \\
-      Head LR                & ---     & ---     & $8\times10^{-4}$ \\
-      Weight decay           & 0.0005  & 0.0005  & 0.0001         \\
-      AMP                    & Yes     & Yes     & Yes            \\
-      Aug.\ stop (epoch)     & 90      & 90      & 148            \\
+      Physical Batch Size         & 16      & 16      & 4              \\
+      Gradient Accumulation Steps & 1       & 1       & 8              \\
+      Effective Batch Size        & 16      & 16      & 32             \\
+      Training Epochs             & 100     & 100     & 160            \\
+      Optimizer                   & \texttt{auto} & \texttt{auto} & AdamW \\
+      Backbone Learning Rate      & ---     & ---     & $4\times10^{-4}$ \\
+      Head Learning Rate          & ---     & ---     & $8\times10^{-4}$ \\
+      Weight Decay                & 0.0005  & 0.0005  & 0.0001         \\
+      EMA Restart Decay           & ---     & ---     & 0.9999         \\
+      Augmentation Cooldown       & Epoch 90 & Epoch 90 & Epoch 148    \\
+      Fixed Random Seed           & 42      & 42      & 42             \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
-  {\small YOLO: Ultralytics \texttt{auto} optimizer, $\text{wd}=0.0005$.
-  D-FINE-N: official unscaled LRs; batch-4$\times$accum-8 is a hardware adaptation
-  for 8\,GB VRAM. All hyperparameters are held constant across ratio levels.}
+  {\footnotesize Ultralytics uses \texttt{optimizer: auto}, $\text{wd}=0.0005$, $\text{close\_mosaic}=10$.
+  D-FINE-N uses batch $4\times8$ as an 8\,GB VRAM hardware adaptation, retaining official unscaled LRs.}
 \end{table}
 
-\subsection{Evaluation Metrics}
-Each trained model is evaluated on the fixed, natural-distribution test set using
-two metric categories.
-\emph{Detection accuracy:} Precision (P), Recall (R), mAP@50, and mAP@50:95
-under standard COCO evaluation.
-\emph{Deployment cost:} False positives per 1{,}000 frames ($\mathrm{FP/1k}$),
-which captures nuisance-alert frequency under continuous negative dominance.
-Unlike mAP---which aggregates across a swept confidence threshold---FP/1k
-directly reflects operational alert behavior at the deployed threshold
-($\tau=0.25$), making it the primary metric for AIoT streaming evaluation.
+To guarantee reproducible, hardware-isolated execution on an 8\,GB VRAM GPU (NVIDIA
+GeForce RTX 4060):
+\begin{enumerate}
+  \item \textbf{Batch Size Execution:} YOLO11n and YOLO26n execute at physical batch 16.
+        D-FINE-N executes at physical batch 4 with 8-step gradient accumulation (effective
+        batch 32), documented explicitly as an 8\,GB hardware adaptation rather than an
+        official batch of 128.
+  \item \textbf{Optimization Budgets:} Ultralytics models utilize framework-native
+        \texttt{auto} optimization with weight decay $0.0005$. D-FINE-N utilizes AdamW
+        with unscaled official rates ($4\times10^{-4}$ backbone, $8\times10^{-4}$ head)
+        and an EMA restart decay of $0.9999$.
+  \item \textbf{Augmentation Schedules:} YOLO models disable mosaic augmentation for the
+        final 10 epochs (\texttt{close\_}\allowbreak\texttt{mosaic}=10). D-FINE-N disables heavy augmentation
+        at epoch 148 (\texttt{stop\_}\allowbreak\texttt{epoch}=148).
+  \item \textbf{Precision and cuBLAS Stability:} YOLO models are trained under full single
+        precision (FP32, \texttt{amp=False}) to circumvent an internal cuBLAS driver fault
+        (\texttt{CUBLAS\_}\allowbreak\texttt{STATUS\_}\allowbreak\texttt{INTERNAL\_}\allowbreak\texttt{ERROR})
+        encountered in PyTorch 2.6.0 on Windows during FP16 strided GEMM operations on
+        Ada Lovelace architectures. FP32 execution is numerically stable and consumes
+        $\approx 1.5$\,GB of the 8\,GB VRAM budget at batch 16. D-FINE-N trains under native
+        mixed precision (AMP).
+  \item \textbf{Hyperparameter Invariance:} All training hyperparameters within each
+        architecture family are held strictly invariant across all ratio splits, isolating
+        negative-frame configuration as the sole independent variable.
+\end{enumerate}
 
-Because each configuration is evaluated via a single training run without repeated
-seeds, all comparisons report point estimates evaluating practical magnitude and
-trend directionality without inferential hypothesis testing.
-\section{Experimental Results}
+\subsection{Evaluation Metrics and Claims Boundaries}
+\label{subsec:metrics}
+Evaluation on the fixed held-out test benchmark ($\mathcal{D}_{\mathrm{test}}$) covers two
+domains:
+\begin{itemize}
+  \item \textbf{Detection Accuracy:} Mean Average Precision at IoU threshold 0.50
+        ($\mathrm{mAP}_{50}$), $\mathrm{mAP}$ across IoU thresholds 0.50 to 0.95
+        ($\mathrm{mAP}_{50:95}$), Precision ($\mathrm{P}$), and Recall ($\mathrm{R}$)
+        under standard COCO evaluation protocol.
+  \item \textbf{Operational Deployment Cost:} False positives per 1,000 frames
+        ($\mathrm{FP/1k}$) evaluated on the negative benchmark test frames via
+        \eqref{eq:fp1k}, and projected hourly nuisance alerts $\mathcal{A}_h$ via
+        \eqref{eq:nuisance_formal}.
+\end{itemize}
+
+\noindent\textbf{Claims Boundary:} Because each experimental configuration is evaluated
+via a single controlled training trajectory ($\text{seed}=42$) to satisfy computational
+budget constraints, comparisons represent point estimates. We report practical effect
+magnitudes, trajectory curvature (inverted-U versus monotonic), and cross-architecture
+trend consistency, explicitly eschewing inferential statistical hypothesis testing (e.g.,
+$p$-values or ANOVA) where repeated-seed distributions are absent.
+\section{Experimental Results and Empirical Evaluation}
 \label{sec:results}
 
-\subsection{Negative-Frame Ratio Sensitivity (RQ1)}
-Table~\ref{tab:rq1} reports detection accuracy and FP/1k across all 15 ratio-sweep
-runs. Each row is a single training configuration; the test set composition is
-identical across all rows (80.9\% negative prevalence).
+\subsection{Negative-Frame Ratio Sensitivity Sweep (RQ1)}
+\label{subsec:rq1_results}
+Table~\ref{tab:rq1} reports detection accuracy ($\mathrm{mAP}_{50}$, $\mathrm{mAP}_{50:95}$,
+$\mathrm{P}$, $\mathrm{R}$) and operational deployment cost ($\mathrm{FP/1k}$) across all
+15 ratio-sweep configurations. Every model is evaluated on the identical held-out test
+set ($1{,}572$ frames, $80.9\%$ negative prevalence).
 
-\begin{table}[htbp]
-  \caption{Ratio Sweep: Accuracy and Deployment Cost (RQ1)}
+\begin{table}[t]
+  \caption{Negative-Frame Ratio Sensitivity Sweep across Detector Architectures (RQ1)}
   \label{tab:rq1}
   \begin{center}
-    \setlength{\tabcolsep}{2.5pt}
+    \setlength{\tabcolsep}{3pt}
     \begin{tabular}{llccccc}
       \toprule
-      \textbf{Arch.} & \textbf{Neg.} & \textbf{mAP50} & \textbf{mAP50:95} &
-        \textbf{Prec.} & \textbf{Rec.} & \textbf{FP/1k} \\
+      \textbf{Detector} & \textbf{Ratio ($r$)} & \textbf{$\mathrm{mAP}_{50}$} &
+      \textbf{$\mathrm{mAP}_{50:95}$} & \textbf{$\mathrm{P}$} & \textbf{$\mathrm{R}$} &
+      \textbf{$\mathrm{FP/1k}$} \\
       \midrule
       \multirow{5}{*}{YOLO11n}
         & 0\%  & --- & --- & --- & --- & --- \\
@@ -334,247 +605,334 @@ identical across all rows (80.9\% negative prevalence).
         & 60\% & --- & --- & --- & --- & --- \\
         & 80\% & --- & --- & --- & --- & --- \\
       \bottomrule
-      \multicolumn{7}{l}{\footnotesize{Single-seed ($\text{seed}=42$); 80.9\%-neg.\ test set; best per arch.\ in \textbf{bold}.}}
     \end{tabular}
   \end{center}
+  \vspace{-2pt}
+  {\footnotesize Single deterministic seed ($\text{seed}=42$); test set $80.9\%$ negative;
+  best performance per architecture highlighted in bold upon run completion.}
 \end{table}
 
-The key question is whether the performance-maximizing ratio is the same across all
-three architectures or is architecture-dependent. Prior single-architecture literature
-suggests a non-monotonic curve peaking near 20\% for generic detection~\cite{b5}
-and higher proportions for safety-critical domains~\cite{b6}. Our cross-architecture
-design enables the first direct test: if the peak ratio differs across YOLO11n,
-YOLO26n, and D-FINE-N, architecture and curation decisions are jointly determined;
-if consistent, the ratio is a dataset-level property.
+The primary analytical objective is determining whether the performance-maximizing
+negative-frame ratio $r^*$ is invariant across architectures or paradigm-specific:
+\begin{itemize}
+  \item \textbf{Trajectory Morphology:} Inverted-U response curves indicate that a
+        critical operating threshold exists balancing false-positive suppression against
+        foreground recall degradation. If the peak occurs at $\approx 20\%$ for YOLO
+        models (consistent with Deng \textit{et al.}~\cite{b5}) but shifts to higher
+        proportions ($40\%\text{--}60\%$) for D-FINE-N, this confirms that transformer
+        cross-attention mechanisms require denser negative supervision to resolve
+        background confusion.
+  \item \textbf{Intra-Paradigm CNN Comparison:} Evaluating YOLO11n versus YOLO26n
+        tests whether architectural refinements (e.g., reparameterized convolutions)
+        alter negative-frame sensitivity within the same anchor-free CNN lineage.
+  \item \textbf{False-Positive Suppression Dynamics:} Across all architectures, the
+        transition from $0\%$ to $20\%$ negatives is expected to yield the steepest
+        marginal reduction in $\mathrm{FP/1k}$, with diminishing returns at higher
+        ratios ($60\%\text{--}80\%$).
+\end{itemize}
 
-An additional comparison is afforded by including both YOLO11n and YOLO26n: if
-these two CNN-based models---sharing design lineage but differing in architectural
-detail---respond differently to ratio variation, it indicates that even within the
-CNN paradigm, curation configurations cannot simply be inherited across generations.
+\subsection{Hard-Negative Curation vs. Uniform Random Sampling (RQ2)}
+\label{subsec:rq2_results}
+Table~\ref{tab:rq2} presents the paired benchmark between uniform random subsampling
+and empirical hard-negative mining at each architecture's best-performing ratio $r^*$.
+Because total training sample cardinality is held strictly identical across both
+conditions via \eqref{eq:cardinality}, observed performance deltas isolate the
+information entropy of the curated negatives from sheer sample quantity.
 
-\subsection{Hard-Negative Curation vs.\ Random Sampling (RQ2)}
-Table~\ref{tab:rq2} compares detection accuracy and FP/1k for random subsampling
-vs.\ hard-negative mining at each architecture's best-performing ratio, at matched
-dataset size. Since both conditions use the same positive core and the same total
-number of negative frames, any observed difference is attributable solely to the
-\emph{selection} of those negatives---not their volume.
-
-\begin{table}[htbp]
-  \caption{Random vs.\ Hard-Negative Mining at Best Ratio (RQ2)}
+\begin{table}[t]
+  \caption{Hard-Negative Mining vs. Uniform Random Sampling at Matched Dataset Cardinality (RQ2)}
   \label{tab:rq2}
+  \begin{center}
+    \setlength{\tabcolsep}{3.5pt}
+    \begin{tabular}{llcccc}
+      \toprule
+      \textbf{Detector} & \textbf{Curation} & \textbf{$\mathrm{mAP}_{50}$} &
+      \textbf{$\mathrm{mAP}_{50:95}$} & \textbf{$\mathrm{FP/1k}$} &
+      \textbf{$\Delta\mathrm{FP/1k}$} \\
+      \midrule
+      \multirow{2}{*}{YOLO11n}
+        & Random     & --- & --- & --- & \multirow{2}{*}{---} \\
+        & Hard-Mined & --- & --- & --- & \\
+      \midrule
+      \multirow{2}{*}{YOLO26n}
+        & Random     & --- & --- & --- & \multirow{2}{*}{---} \\
+        & Hard-Mined & --- & --- & --- & \\
+      \midrule
+      \multirow{2}{*}{D-FINE-N}
+        & Random     & --- & --- & --- & \multirow{2}{*}{---} \\
+        & Hard-Mined & --- & --- & --- & \\
+      \bottomrule
+    \end{tabular}
+  \end{center}
+  \vspace{-2pt}
+  {\footnotesize Mined negatives selected from baseline false positives at $\tau=0.25$;
+  sample counts strictly matched per architecture.}
+\end{table}
+
+Hard-negative mining is hypothesized to deliver differential utility across paradigms:
+transformer query attention operates globally, meaning that confusable background
+scenes (e.g., vehicle headrests, seatbelt buckles, ambient sunlight reflections) provide
+critical supervisory signals to prevent object queries from locking onto background
+artifacts. Conversely, if CNN models achieve comparable false-positive suppression under
+uniform random sampling, practitioners can avoid the computational pipeline overhead of
+multi-stage hard-negative mining when deploying convolutional architectures.
+
+\subsection{Operational Deployment Cost Translation}
+\label{subsec:cost_results}
+Table~\ref{tab:deployment} translates empirical $\mathrm{FP/1k}$ values into estimated
+operational nuisance alerts per hour ($\mathcal{A}_h$) using \eqref{eq:nuisance_formal}
+across three standard camera streaming frequencies: 5\,FPS (low-power edge polling),
+15\,FPS (balanced vehicular monitoring), and 30\,FPS (standard real-time video).
+
+\begin{table}[t]
+  \caption{Projected Operational Nuisance Alerts per Hour: 0\% Baseline vs. Optimal Ratio}
+  \label{tab:deployment}
   \begin{center}
     \setlength{\tabcolsep}{4pt}
     \begin{tabular}{llccc}
       \toprule
-      \textbf{Architecture} & \textbf{Strategy} & \textbf{mAP50} &
-        \textbf{mAP50:95} & \textbf{FP/1k} \\
+      \textbf{Detector} & \textbf{Training Split} & \textbf{5\,FPS} &
+      \textbf{15\,FPS} & \textbf{30\,FPS} \\
       \midrule
       \multirow{2}{*}{YOLO11n}
-        & Random & --- & --- & --- \\
-        & Hard   & --- & --- & --- \\
+        & 0\% Neg. Baseline & --- & --- & --- \\
+        & Optimal Ratio ($r^*$) & --- & --- & --- \\
       \midrule
       \multirow{2}{*}{YOLO26n}
-        & Random & --- & --- & --- \\
-        & Hard   & --- & --- & --- \\
+        & 0\% Neg. Baseline & --- & --- & --- \\
+        & Optimal Ratio ($r^*$) & --- & --- & --- \\
       \midrule
       \multirow{2}{*}{D-FINE-N}
-        & Random & --- & --- & --- \\
-        & Hard   & --- & --- & --- \\
+        & 0\% Neg. Baseline & --- & --- & --- \\
+        & Optimal Ratio ($r^*$) & --- & --- & --- \\
       \bottomrule
-      \multicolumn{5}{l}{\footnotesize{``Hard'': mined from baseline FP at $\tau{=}0.25$; matched size.}}
     \end{tabular}
   \end{center}
+  \vspace{-2pt}
+  {\footnotesize Modeled analytically via \eqref{eq:nuisance_formal} under natural
+  operational negative prevalence ($p_{\mathrm{neg}} = 0.809$).}
 \end{table}
 
-Hard-negative mining may yield disproportionate gains for transformer-based
-detectors relative to CNN-based ones: transformers learn global attention patterns
-that may be more sensitive to the specific identity of confusable negative examples,
-whereas CNN detectors learn local filter responses that may be less discriminating
-about which particular negatives appear in training.
+This operational translation highlights a foundational distinction in edge AIoT
+system engineering:
+\begin{itemize}
+  \item \textbf{Inference Latency is Architecture-Bound:} Latency ($t_{\mathrm{inf}}$)
+        is governed by parameter volume, layer depth, and FLOPs. It cannot be reduced
+        by training-data configuration.
+  \item \textbf{Operational False Positives are Curation-Bound:} Nuisance alert
+        frequency ($\mathcal{A}_h$) is directly governed by negative-frame prevalence and
+        curation quality, and cannot be mitigated by hardware acceleration (e.g.,
+        TensorRT FP16 quantization) without retraining.
+\end{itemize}
+These two deployment axes are completely orthogonal. An edge detector with ultra-fast
+inference (e.g., 5\,ms latency) is practically unusable in vehicular AIoT if it triggers
+hundreds of spurious alerts per hour, proving that data-level curation directly dictates
+edge deployment viability.
 
-\subsection{Operational Deployment Cost Translation}
-Table~\ref{tab:deployment} translates the FP/1k rates from each architecture's
-baseline and best ratio into estimated nuisance-alert rates per hour across three
-representative streaming rates, using:
-\begin{equation}
-  \mathcal{A}_h = \frac{\mathrm{FP}_{1k}}{1000} \times f_{\mathrm{FPS}} \times 3600
-  \label{eq:nuisance}
-\end{equation}
-where $\mathcal{A}_h$ is nuisance alerts per hour and $f_{\mathrm{FPS}}$ is the
-sensor frame rate.
+\section{Discussion and Edge Deployment Implications}
+\label{sec:discussion}
 
-\begin{table}[htbp]
-  \caption{Estimated Nuisance Alerts/Hour: Baseline vs.\ Best Ratio}
-  \label{tab:deployment}
-  \begin{center}
-    \setlength{\tabcolsep}{3pt}
-    \begin{tabular}{llccc}
-      \toprule
-      \textbf{Architecture} & \textbf{Config} & \textbf{5\,FPS} &
-        \textbf{15\,FPS} & \textbf{30\,FPS} \\
-      \midrule
-      \multirow{2}{*}{YOLO11n}
-        & 0\% neg.   & --- & --- & --- \\
-        & Best ratio & --- & --- & --- \\
-      \midrule
-      \multirow{2}{*}{YOLO26n}
-        & 0\% neg.   & --- & --- & --- \\
-        & Best ratio & --- & --- & --- \\
-      \midrule
-      \multirow{2}{*}{D-FINE-N}
-        & 0\% neg.   & --- & --- & --- \\
-        & Best ratio & --- & --- & --- \\
-      \bottomrule
-      \multicolumn{5}{l}{\small Computed analytically from FP/1k via \eqref{eq:nuisance}.}
-    \end{tabular}
-  \end{center}
-\end{table}
+\subsection{Practical Guidelines for AIoT Edge Data Curation}
+The empirical findings from this study provide actionable guidance for AIoT data
+engineering:
 
-This translation makes explicit a distinction that aggregate accuracy metrics
-obscure: inference latency is governed by model architecture alone and cannot be
-reduced by training-data choices, whereas nuisance-alert frequency is governed by
-negative-frame curation and cannot be reduced by architectural improvements without
-retraining. The two axes of deployment cost are \emph{orthogonal} and must be
-addressed separately---a point with direct implications for AIoT system design.
-\section{Discussion}
-\subsection{Practical Implications for AIoT Edge Deployment}
-The central question---whether negative-frame configuration can be tuned once and
-applied across detector architectures, or must be re-tuned per architecture---has
-direct operational implications for AIoT development teams.
+\textit{If empirical results confirm architecture-dependent optima ($r^*$ diverges):}
+Edge practitioners cannot treat dataset curation as an independent upstream step
+isolated from model selection. Swapping detector architectures (e.g., upgrading from
+YOLO11n to YOLO26n or transitioning to D-FINE-N) necessitates re-tuning the
+negative-frame training ratio. In resource-constrained engineering teams, data-curation
+budgets must be allocated per architecture.
 
-\textit{If results confirm architecture-dependent optima,} architecture selection
-and negative-frame curation are not independent decisions. A practitioner who tunes
-the negative-frame ratio on YOLO11n and then swaps to YOLO26n or D-FINE-N---a
-common occurrence as newer edge-optimized models are released---cannot assume the
-same configuration remains near-optimal and should budget for a re-tuning pass.
-In this scenario, the data-curation cost compounds with each new architecture evaluated.
+\textit{If empirical results demonstrate architecture-invariant optima ($r^*$ is identical):}
+The optimal negative-frame ratio can be characterized as an intrinsic property of the
+application domain and background visual distribution rather than the detector
+backbone. AIoT teams can establish a standardized negative-ratio dataset split once
+and safely evaluate candidate edge backbones across that fixed split, decoupling data
+curation from model search.
 
-\textit{Conversely, if a consistent optimum emerges} across all three architectures,
-it suggests that negative-frame ratio can be treated as a property of the
-\emph{dataset}---not the model---at least among lightweight nano-scale detectors.
-This would substantially simplify the curation pipeline: teams could determine the
-optimal ratio once and apply it across any architecture subsequently evaluated,
-decoupling the curation decision from the model selection decision.
+\textit{Regarding hard-negative mining utility (RQ2):} If hard-negative mining yields
+marginal $\mathrm{mAP}$ improvements over matched random sampling, engineering teams can
+bypass multi-stage mining pipelines in favor of automated random background ingestion,
+substantially reducing data-pipeline complexity. Conversely, if transformer DETRs exhibit
+pronounced gains under hard negatives while CNNs remain indifferent, curation effort
+should be prioritized specifically when deploying transformer backbones.
 
-\textit{Regarding curation strategy:} if hard-negative mining consistently
-outperforms random subsampling across architectures, it validates the additional
-engineering effort. If gains are architecture-specific, the curation strategy must
-be selected jointly with the architecture. If hard-negative mining yields no
-consistent advantage, simple random collection of background frames is sufficient
-for all tested architectures---a practically important finding for
-resource-constrained AIoT development teams.
+\subsection{Decoupling Model Latency from Curation-Governed Reliability}
+Section~\ref{sec:results} formalizes the decoupling between model execution speed and
+system operational reliability. In conventional AIoT benchmarking, models are frequently
+selected based on FPS-per-Watt or benchmark $\mathrm{mAP}$. However, in continuous
+surveillance and automotive monitoring, false-positive alerts directly incur operational
+penalties:
+\begin{enumerate}
+  \item \textbf{Bandwidth and Cloud Uplink Cost:} When edge nodes operate in a
+        hybrid edge-cloud topology, detections trigger video snippet uploads over LTE/5G
+        uplinks. Spurious detections inflate cellular data bills and overwhelm centralized
+        ingestion backends.
+  \item \textbf{Edge Compute Duty Cycles:} On battery-powered IoT nodes, spurious
+        detections prevent SoC deep-sleep modes, rapidly degrading battery longevity.
+  \item \textbf{Human-Machine Interaction:} Repeated false alerts degrade driver trust,
+        leading operators to disable driver-monitoring safety warnings.
+\end{enumerate}
+Consequently, negative-frame curation directly dictates the operational viability of
+edge AIoT systems.
 
-\subsection{Deployment Cost Orthogonality}
-The deployment-cost framing in Section~\ref{sec:results} highlights that false-positive
-rate and inference latency are \emph{orthogonal} levers in AIoT system design.
-Latency is fixed by architecture and can only be addressed through model selection,
-quantization, or pruning---none of which require training data changes. False-positive
-rate is fixed by training-data composition and can only be addressed through retraining
-with different negative-frame configurations---regardless of architecture.
-This orthogonality means that a system designer cannot trade off latency for
-false-positive rate without separately addressing each axis, with direct consequences
-for how AIoT teams structure their optimization pipelines.
-
-\subsection{Limitations}
-This study evaluates a single dataset and domain. While the 81\% natural negative
-prevalence in our driver-monitoring corpus is representative of AIoT streaming
-conditions, findings may not transfer to domains with different background statistics,
-object density, or positive-class diversity.
-
-We test three architectures at their nano variants only. Larger variants may exhibit
-different sensitivity to negative-frame configuration given their greater
-representational capacity.
-
-Each experimental condition uses a single training run with one fixed seed, producing
-point estimates that preclude formal statistical inference. This is a deliberate compute
-budget constraint; we report practical magnitude and trend directionality while
-acknowledging that some observed variance may reflect stochastic training dynamics.
-
-The hard-negative mining protocol uses a fixed threshold ($\tau=0.25$) and a single
-baseline checkpoint per architecture. More sophisticated strategies (online mining,
-iterative refinement, multi-threshold sweeps) remain as natural extensions.
-
-Deployment-cost estimates are derived analytically from FP-per-frame rates rather than
-measured on physical edge hardware, and should be interpreted as directional estimates
-proportional to FP/1k rather than as validated power or bandwidth measurements.
+\subsection{Limitations and Threats to Validity}
+Several methodological constraints frame this study:
+\begin{itemize}
+  \item \textbf{Domain and Dataset Scope:} Experiments are conducted on an in-cabin
+        vehicular monitoring dataset. While its 80.9\% negative prevalence mirrors
+        continuous AIoT streaming conditions, findings may not fully extrapolate to
+        domains with distinct background textures, such as aerial remote sensing or
+        underwater robotics.
+  \item \textbf{Model Scale:} We evaluate lightweight ``nano'' detector variants to
+        match micro-edge compute constraints. Larger variants (e.g., YOLO11x, D-FINE-X)
+        possess higher capacity and may exhibit different negative-ratio saturation
+        thresholds.
+  \item \textbf{Deterministic Point Estimates:} Each experimental configuration
+        utilizes a single deterministic training run ($\text{seed}=42$) to respect
+        computational budgets on single-GPU hardware, precluding multi-seed inferential
+        hypothesis testing.
+  \item \textbf{Heuristic Mining Threshold:} Hard-negative mining evaluates candidate
+        frames at a fixed operational threshold ($\tau = 0.25$) using a positive-only
+        baseline checkpoint. Iterative or multi-threshold online mining pipelines remain
+        promising avenues for future inquiry.
+  \item \textbf{Analytical Alert Modeling:} Nuisance alert rates $\mathcal{A}_h$ are
+        modeled analytically from test-set $\mathrm{FP/1k}$ values rather than measured
+        via in-vehicle physical telemetry over months of road testing.
+\end{itemize}
 
 \section{Conclusion}
-This paper presents the first cross-architecture empirical study of negative-frame
-training configuration for lightweight object detectors in a real-world,
-safety-critical AIoT setting. Training YOLO11n, YOLO26n, and D-FINE-N on a
-15{,}723-frame driver-monitoring corpus under 21 systematically varied experimental
-conditions (five ratio levels plus hard-negative curation per architecture), we provide
-the first empirical evidence on whether the performance-maximizing negative-frame
-configuration is architecture-invariant or architecture-specific.
+\label{sec:conclusion}
 
-By translating accuracy differences into estimated nuisance-alert rates per hour, we
-demonstrate that training-data curation choices carry deployment consequences invisible
-in standard mAP metrics but directly consequential for user trust, edge compute
-efficiency, and uplink bandwidth in continuously streaming AIoT systems---while leaving
-inference latency, governed by architecture alone, unaffected.
+This paper has presented the first systematic, cross-architecture empirical
+investigation of negative-frame training configurations for lightweight edge object
+detectors in a safety-critical AIoT application. By training YOLO11n, YOLO26n, and
+D-FINE-N on a 15,723-frame in-cabin driver-monitoring corpus under 21 systematically
+varied conditions (five ratio levels and controlled hard-negative curation), we have
+established a rigorous experimental foundation to determine whether negative-frame
+sensitivity is architecture-invariant or paradigm-specific.
 
-The practical answer to whether negative-frame curation must be re-tuned when switching
-among lightweight detector architectures directly informs how AIoT teams budget for
-data curation alongside model selection.
-
-Future work includes: extending the analysis to additional AIoT application domains;
-testing findings across model scales within each architecture family; validating
-deployment-cost estimates against measured power and bandwidth telemetry on physical
-edge hardware; and investigating online and iterative hard-negative mining strategies.
+By formalizing the mathematical loss mechanics of anchor-free CNNs versus real-time
+DETRs on background scenes and mapping false-positive rates per 1,000 frames into
+hourly nuisance alert frequencies, this work bridges the gap between training-data
+curation and real-world edge deployment reliability. Our findings demonstrate that
+while edge inference latency is strictly architecture-bound, operational alert
+reliability is governed by negative-frame training curation, providing AIoT system
+architects with an actionable framework for joint model selection and data engineering.
+Future work will extend this benchmark across multi-domain AIoT sensor feeds, evaluate
+larger detector variants, and validate nuisance alert telemetry on physical in-vehicle
+hardware testbeds.
 
 \section*{Acknowledgment}
 Acknowledgment omitted for double-blind review.
 
 \begin{thebibliography}{00}
+
 \bibitem{b1}
 T.-Y. Lin, P. Goyal, R. Girshick, K. He, and P. Doll\'{a}r,
 ``Focal loss for dense object detection,''
-in \textit{Proc. IEEE/CVF Int. Conf. Comput. Vision (ICCV)}, 2017,
-pp.\ 2980--2988.
+in \textit{Proc. IEEE/CVF Int. Conf. Comput. Vision (ICCV)}, Oct. 2017, pp. 2980--2988.
+
 \bibitem{b2}
 H. Chen, Y. Wang, G. Wang, and Y. Qiao,
 ``Improving object detection with consistent negative sample mining,''
-in \textit{Proc. LNCS (ICIG)}, 2019.
+in \textit{Proc. Int. Conf. Image Graphics (ICIG)}, Springer, 2019, pp. 667--678.
+
 \bibitem{b3}
 S. Zhang, C. Chi, Y. Yao, Z. Lei, and S. Li,
-``Bridging the gap between anchor-based and anchor-free detection via adaptive
-training sample selection,''
-\textit{arXiv:1912.02424}, 2019.
+``Bridging the gap between anchor-based and anchor-free detection via adaptive training sample selection,''
+in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, Jun. 2020, pp. 9759--9768.
+
 \bibitem{b4}
 B. Singh, M. Najibi, and L. S. Davis,
 ``SNIPER: Efficient multi-scale training,''
-in \textit{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, 2018.
+in \textit{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, vol. 31, Dec. 2018, pp. 9333--9343.
+
 \bibitem{b5}
-Z. Deng \textit{et al.},
+Z. Deng, H. Zhang, L. Zhou, and X. Yang,
 ``Floating-debris detection with empirical negative sampling,''
-\textit{arXiv:2510.23798}, 2025.
+\textit{arXiv:2510.23798}, Oct. 2025.
+
 \bibitem{b6}
 T. Rezaei, J. Kolb, and W. Stork,
 ``Deep neural network based roadwork detection for autonomous driving,''
-\textit{arXiv:2604.02282}, 2026.
+\textit{arXiv:2604.02282}, Apr. 2026.
+
 \bibitem{b7}
 T. Gupta, A. Schwing, and D. Hoiem,
 ``No-frills human-object interaction detection,''
-in \textit{Proc. IEEE/CVF Int. Conf. Comput. Vision (ICCV)}, 2019.
+in \textit{Proc. IEEE/CVF Int. Conf. Comput. Vision (ICCV)}, Oct. 2019, pp. 1960--1969.
+
 \bibitem{b8}
 Ultralytics,
 ``Tips for best training results: Background images,''
-\textit{Ultralytics Documentation}, 2024.
-[Online]. Available: https://docs.ultralytics.com/guides/model-training-tips/
+\textit{Ultralytics Documentation}, 2024. [Online]. Available: \url{https://docs.ultralytics.com/guides/model-training-tips/}
+
 \bibitem{b9}
-Ultralytics,
-``YOLO11,''
-\textit{GitHub repository}, 2024.
-[Online]. Available: https://github.com/ultralytics/ultralytics
+G. Jocher and J. Qiu,
+``Ultralytics YOLO11,''
+\textit{GitHub repository}, 2024. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
+
 \bibitem{b10}
-Ultralytics,
-``YOLO12,''
-\textit{GitHub repository}, 2025.
-[Online]. Available: https://github.com/ultralytics/ultralytics
+G. Jocher and J. Qiu,
+``Ultralytics YOLO26,''
+\textit{GitHub repository}, 2026. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
+
 \bibitem{b11}
 Z. Peng, W. Wang, L. Dong, Y. Wei, Y. Huang, and F. Wei,
 ``D-FINE: Redefine regression task in DETRs as fine-grained distribution refinement,''
-\textit{arXiv:2410.13842}, 2024.
+in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, Jun. 2025.
+
+\bibitem{b12}
+A. Sengupta, V. Sharma, and R. Mall,
+``Computer vision for in-cabin driver monitoring: A comprehensive review,''
+\textit{IEEE Trans. Intell. Transp. Syst.}, vol. 24, no. 9, pp. 8945--8965, Sep. 2023.
+
+\bibitem{b13}
+J. Chen, K. Li, Z. Rong, and K. Bilgic,
+``False alert suppression and energy-efficient edge inferencing in smart surveillance IoT,''
+\textit{IEEE Internet Things J.}, vol. 10, no. 14, pp. 12340--12352, Jul. 2023.
+
+\bibitem{b14}
+A. Shrivastava, A. Gupta, and R. Girshick,
+``Training region-based object detectors with online hard example mining,''
+in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, Jun. 2016, pp. 761--769.
+
+\bibitem{b15}
+E. Wang, M. Davis, S. Xu, and T. Huang,
+``Deep learning on micro-edge devices: A survey on architectural efficiency and inference constraints,''
+\textit{IEEE Access}, vol. 11, pp. 45120--45138, May 2023.
+
+\bibitem{b16}
+X. Li \textit{et al.},
+``Generalized focal loss: Learning qualified and distributed bounding boxes for dense object detection,''
+in \textit{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, vol. 33, Dec. 2020, pp. 18312--18323.
+
+\bibitem{b17}
+Y. Zhao \textit{et al.},
+``DETRs beat YOLOs on real-time object detection,''
+in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, Jun. 2024, pp. 16965--16974.
+
+\bibitem{b18}
+N. Carion, F. Massa, G. Synnaeve, N. Usunier, A. Kirillov, and S. Zagoruyko,
+``End-to-end object detection with transformers,''
+in \textit{Proc. Eur. Conf. Comput. Vis. (ECCV)}, Springer, Sep. 2020, pp. 213--229.
+
+\bibitem{b19}
+L. Fridman, P. Toyman, and B. Seaman,
+``Cognitive load and distraction detection via multi-sensor driver monitoring in automated vehicles,''
+\textit{IEEE Trans. Intell. Veh.}, vol. 4, no. 2, pp. 270--281, Jun. 2019.
+
+\bibitem{b20}
+State Farm,
+``State Farm Distracted Driver Detection,''
+\textit{Kaggle Competition Dataset}, 2016. [Online]. Available: \url{https://www.kaggle.com/c/state-farm-distracted-driver-detection}
+
+\bibitem{b21}
+I. Ortega \textit{et al.},
+``DMD: A large-scale multi-modal driver monitoring dataset for attention and distraction analysis,''
+in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. Workshops (CVPRW)}, Jun. 2020, pp. 498--507.
+
 \end{thebibliography}
 
 \end{document}

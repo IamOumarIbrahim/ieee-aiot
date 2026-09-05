@@ -146,7 +146,22 @@ def main():
             img_path = repo_root / img_rel
             assert ann_path.exists(), f"{yml} ({loader_key}): missing annotation file: {ann_path}"
             assert img_path.exists(), f"{yml} ({loader_key}): missing image folder: {img_path}"
-        print(f"  [OK] {yml} parsed & all dataloaders (train/val/test) verified")
+    print("\n=== 7. CANONICAL TRAIN NEGATIVE POOL VERIFICATION (RQ2) ===")
+    pool_file = repo_root / "data" / "processed" / "RGB" / "train_neg_pool_ids.json"
+    assert pool_file.exists(), f"Missing train_neg_pool_ids.json: {pool_file}"
+    with open(pool_file, "r") as f:
+        pool_data = json.load(f)
+    pool_ids = set(pool_data["train_neg_pool_ids"])
+    assert len(pool_ids) == 10178, f"Expected 10178 IDs, got {len(pool_ids)}"
+    
+    with open(coco_dir / "instances_val.json", "r") as f:
+        val_img_ids = {img["id"] for img in json.load(f)["images"]}
+    with open(coco_dir / "instances_test.json", "r") as f:
+        test_img_ids = {img["id"] for img in json.load(f)["images"]}
+    
+    assert len(pool_ids & val_img_ids) == 0, f"DATA LEAKAGE: train_neg_pool intersects with val set ({len(pool_ids & val_img_ids)} frames)!"
+    assert len(pool_ids & test_img_ids) == 0, f"DATA LEAKAGE: train_neg_pool intersects with test set ({len(pool_ids & test_img_ids)} frames)!"
+    print(f"  [OK] train_neg_pool_ids.json verified: {len(pool_ids)} candidates, 0 val/test leakage")
 
     print("\nALL VERIFICATIONS PASSED! Directory and configurations are 100% ready for training.")
 

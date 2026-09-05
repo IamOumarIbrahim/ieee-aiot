@@ -21,25 +21,23 @@
 
 ## Overview
 
-### Research Question
+### Research Questions
 
-Is the optimal negative-frame configuration for training lightweight object detectors architecture-invariant, or does it depend on detector design — and what does that mean for false-positive-driven operational cost in AIoT deployment?
+**RQ1 (Ratio Sensitivity and Paradigm Invariance):**
+> Does the negative-frame ratio that maximizes detection accuracy ($\mathrm{mAP}$) and minimizes false-positive frequency differ across detector architectures (anchor-free CNN vs. real-time DETR), or does a uniform, architecture-invariant optimum emerge?
 
-RQ1 (Sensitivity & Transferability):
-> How do precision, recall, mAP, and false-positive rate respond to negative-frame ratio across YOLO11n, YOLO26n, and D-FINE-N — and is the performance-maximizing ratio the same across all three?
-
-RQ2 (Curation Quality):
-> At each architecture's empirically best ratio, does replacing random negatives with curated hard negatives (mined from false-positive-prone frames) produce further gains — and is that gain architecture-dependent?
+**RQ2 (Curation Quality vs. Sample Volume):**
+> At each architecture's empirically identified best ratio, does substituting random negative frames with hard-mined negative frames (background scenes inducing false positives in a baseline model) yield further performance gains at matched dataset cardinality, and does this benefit vary between CNN and transformer architectures?
 
 ### Abstract
 
-Edge AIoT object detectors, such as in-cabin driver monitoring systems, continuously process video streams where background-only (negative) frames dominate natural operational distributions (~81% negative prevalence). While incorporating negative frames during training mitigates false positives, prior studies tune negative-to-positive proportions in isolation for individual detector architectures. This paper presents the first controlled cross-architecture empirical investigation of negative-frame ratio sensitivity and curation quality across three lightweight edge detectors spanning distinct paradigms: YOLO11n (CNN), YOLO26n (next-gen CNN), and D-FINE-N (real-time DETR transformer). Evaluating five nested arithmetic ratio configurations (0% to 80% negative frames) and false-positive hard-negative curation at matched dataset volumes on a 15,723-frame driver monitoring corpus, we investigate whether optimal negative configurations generalize across detector lineages. Finally, we translate false-positive rates per 1,000 frames into estimated operational nuisance alerts per hour, demonstrating that training data curation directly governs edge deployment usability independent of model inference latency.
+Deep learning object detectors deployed in continuous edge Artificial Intelligence of Things (AIoT) sensing systems---such as in-cabin driver monitoring systems (DMS)---operate under extreme temporal background dominance, where background-only (negative) frames constitute the overwhelming majority of natural operational feeds ($\approx 81\%$ negative prevalence). While incorporating unannotated negative frames into training datasets is recognized as an effective lever to suppress false positives, existing literature investigates negative-to-positive proportions in isolation for individual detector architectures, leaving open whether an optimal configuration transfers across architecturally distinct detection paradigms. This paper presents the first systematic, cross-architecture empirical investigation of negative-frame ratio sensitivity and curation quality across three lightweight edge detectors spanning distinct structural paradigms: YOLO11n (anchor-free CNN), YOLO26n (next-generation CNN with reparameterized convolutions), and D-FINE-N (real-time DETR transformer with fine-grained distribution refinement). Evaluating five nested arithmetic ratio configurations (0% to 80% negative frames) and an empirical hard-negative mining protocol at matched dataset cardinality on a 15,723-frame driver-monitoring corpus, we determine whether performance-maximizing negative-frame configurations are architecture-invariant or architecture-specific. Furthermore, we translate false-positive rates per 1,000 frames ($\mathrm{FP/1k}$) into estimated operational nuisance alert rates per hour ($\mathcal{A}_h$), demonstrating that training-data curation directly governs edge deployment usability independently of model inference latency.
 
-### Contributions
+### Core Contributions
 
-1. First cross-architecture study of negative-frame ratio sensitivity on a real, safety-critical AIoT dataset (in-cabin driver monitoring) rather than a generic benchmark — testing a CNN-based detector (YOLO11n), its next generation (YOLO26n), and a transformer-based real-time detector (D-FINE-N), showing whether one "optimal ratio" generalizes or not.
-2. A hard-negative curation protocol built from our own baseline's false-positive-prone frames, benchmarked against random subsampling at matched dataset size — quantifying whether curation effort is worth it, and for which architectures.
-3. A deployment-cost reframing: translating negative-frame-driven FP-rate changes into estimated nuisance-alert/wasted-transmission cost per hour of operation — explicitly separated from inference latency, which is architecture-bound, not training-data-bound. Metric to track: false positives per 1,000 frames
+1. **Cross-Architecture Negative-Ratio Benchmark:** The first controlled empirical sensitivity sweep of negative-frame training ratios across three lightweight edge detectors spanning CNN and transformer paradigms on a safety-critical AIoT in-cabin monitoring dataset, establishing whether curation configurations transfer across detector lineages.
+2. **Controlled Hard-Negative Curation Protocol:** An empirical false-positive mining protocol benchmarked against uniform random sampling at strictly matched dataset cardinality, isolating the contribution of sample information entropy from sample volume across diverse detector architectures.
+3. **Operational Deployment Cost Reframing:** An analytical mapping translating measured false positives per 1,000 frames ($\mathrm{FP/1k}$) into estimated hourly nuisance alerts ($\mathcal{A}_h = 3.6 \times f_{\mathrm{FPS}} \times p_{\mathrm{neg}} \times \mathrm{FP/1k}$), demonstrating that data-level negative curation governs edge operational reliability independently of architectural inference latency.
 
 ### Experimental Matrix
 
@@ -159,21 +157,16 @@ python src\data\mine_hard_negatives.py `
 
 ## Authors & Citation
 
+*Author identities, institutional affiliations, and contact information omitted for double-blind peer review.*
 
-- **Oumar Mamoun Ibrahim** — Department of Computer Engineering, University of Sharjah<br>
-  [U22200741@sharjah.ac.ae](mailto:U22200741@sharjah.ac.ae) · [ORCID 0009-0008-0312-1605](https://orcid.org/0009-0008-0312-1605)
-- **Dr. Mohamad Khairi bin Ishak** — Department of Computer Engineering, University of Sharjah<br>
-  [mishak@sharjah.ac.ae](mailto:mishak@sharjah.ac.ae) · [ORCID 0000-0002-3554-0061](https://orcid.org/0000-0002-3554-0061)
-
-  
 For the conference manuscript itself, use:
 
 ```bibtex
-@unpublished{ibrahim2026ieee-aiot,
-  title     = {Negative Frames Aren't Architecture-Agnostic: A Cross-Detector Study for Edge Driver Monitoring},
-  author    = {Ibrahim, Oumar Mamoun and bin Ishak, Mohamad Khairi},
+@unpublished{anonymous2026ieee-aiot,
+  title     = {Negative Frames Are Not Architecture-Agnostic: A Cross-Detector Study of Negative-Frame Configuration for Edge AIoT Driver Monitoring},
+  author    = {Anonymous Authors},
   year      = {2026},
-  note      = {Conference paper to be submitted to the IEEE Annual Congress on Artificial Intelligence of Things (IEEE AIoT)}
+  note      = {Submitted to the IEEE Annual Congress on Artificial Intelligence of Things (IEEE AIoT)}
 }
 ```
 

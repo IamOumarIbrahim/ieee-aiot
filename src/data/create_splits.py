@@ -119,6 +119,16 @@ def main():
     assert len(val_neg) == 1272
     assert len(train_neg_pool) == 10178
 
+    # Persist canonical train negative pool IDs for downstream mining pipelines (RQ2)
+    train_neg_pool_file = repo_root / "data" / "processed" / "RGB" / "train_neg_pool_ids.json"
+    train_neg_pool_data = {
+        "train_neg_pool_ids": [img["id"] for img in train_neg_pool],
+        "count": len(train_neg_pool)
+    }
+    with open(train_neg_pool_file, "w") as f:
+        json.dump(train_neg_pool_data, f, indent=2)
+    print(f"Persisted train_neg_pool_ids to {train_neg_pool_file}")
+
     # Build test and val full sets
     test_set = test_pos + test_neg
     val_set = val_pos + val_neg

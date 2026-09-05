@@ -21,8 +21,8 @@ SEED = 42
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RQ2 Hard-Negative Mining Pipeline")
-    parser.add_argument("--weights", type=str, required=True, help="Path to baseline detector checkpoint (trained on 0% negative baseline)")
-    parser.add_argument("--target-count", type=int, default=1600, help="Target number of negative frames (matches best RQ1 ratio, e.g. 1600 for 40%)")
+    parser.add_argument("--weights", type=str, required=True, help="Path to baseline detector checkpoint (trained on 0%% negative baseline)")
+    parser.add_argument("--target-count", type=int, default=1600, help="Target number of negative frames (matches best RQ1 ratio, e.g. 1600 for 40%%)")
     parser.add_argument("--tau", type=float, default=0.25, help="Confidence threshold for false-positive detection (paper default: 0.25)")
     parser.add_argument("--tag", type=str, default="yolo11n_best_curated", help="Output tag for generated dataset and configs")
     parser.add_argument("--batch-size", type=int, default=32, help="Inference batch size")
@@ -45,28 +45,55 @@ def load_master_negatives(repo_root):
     pos_images = [img for img in images if len(img_to_anns[img["id"]]) > 0]
     neg_images = [img for img in images if len(img_to_anns[img["id"]]) == 0]
 
-    # Replicate create_splits.py deterministic partitioning
-    rng = random.Random(SEED)
-    rng.shuffle(neg_images)
-    n_neg_test = 1272
-    n_neg_val = 1272
-    train_neg_pool = neg_images[n_neg_test + n_neg_val:]
+    # Load canonical training negative pool IDs from manifest (guaranteed zero val/test leakage)
+    pool_path = repo_root / "data" / "processed" / "RGB" / "train_neg_pool_ids.json"
+    val_coco_path = repo_root / "data" / "processed" / "RGB" / "coco" / "instances_val.json"
+    test_coco_path = repo_root / "data" / "processed" / "RGB" / "coco" / "instances_test.json"
+
+    val_ids = set()
+    test_ids = set()
+    if val_coco_path.exists():
+        with open(val_coco_path, "r") as f:
+            val_ids = {img["id"] for img in json.load(f)["images"]}
+    if test_coco_path.exists():
+        with open(test_coco_path, "r") as f:
+            test_ids = {img["id"] for img in json.load(f)["images"]}
+
+    if pool_path.exists():
+        with open(pool_path, "r") as f:
+            train_neg_ids = set(json.load(f)["train_neg_pool_ids"])
+    else:
+        # Fallback: compute deterministically excluding val and test COCO IDs
+        train_neg_ids = {img["id"] for img in neg_images if img["id"] not in val_ids and img["id"] not in test_ids}
+
+    train_neg_pool = [img for img in neg_images if img["id"] in train_neg_ids]
     assert len(train_neg_pool) == 10178, f"Expected 10178 train negs, got {len(train_neg_pool)}"
 
-    # Also extract train_pos (2,401 frames)
-    cat_to_pos_imgs = {}
-    for img in pos_images:
-        cat_id = img_to_anns[img["id"]][0]["category_id"]
-        cat_to_pos_imgs.setdefault(cat_id, []).append(img)
+    # Strict leakage assertion: candidate pool must have strictly ZERO overlap with val or test
+    train_neg_id_set = {img["id"] for img in train_neg_pool}
+    overlap_val = train_neg_id_set & val_ids
+    overlap_test = train_neg_id_set & test_ids
+    assert len(overlap_val) == 0, f"Critical leakage: candidate neg pool has {len(overlap_val)} frames in val set!"
+    assert len(overlap_test) == 0, f"Critical leakage: candidate neg pool has {len(overlap_test)} frames in test set!"
 
-    rng_pos = random.Random(SEED)
-    train_pos = []
-    for cat_id, cat_imgs in sorted(cat_to_pos_imgs.items()):
-        rng_pos.shuffle(cat_imgs)
-        n_test = round(len(cat_imgs) * 0.10)
-        n_val = round(len(cat_imgs) * 0.10)
-        train_chunk = cat_imgs[n_test + n_val:]
-        train_pos.extend(train_chunk)
+    # Load canonical train_pos (2,401 frames) directly from verified baseline split
+    train_pos_coco_path = repo_root / "data" / "processed" / "RGB" / "coco" / "instances_train_00_pos_only.json"
+    if train_pos_coco_path.exists():
+        with open(train_pos_coco_path, "r") as f:
+            train_pos = json.load(f)["images"]
+    else:
+        cat_to_pos_imgs = {}
+        for img in pos_images:
+            cat_id = img_to_anns[img["id"]][0]["category_id"]
+            cat_to_pos_imgs.setdefault(cat_id, []).append(img)
+        rng_pos = random.Random(SEED)
+        train_pos = []
+        for cat_id, cat_imgs in sorted(cat_to_pos_imgs.items()):
+            rng_pos.shuffle(cat_imgs)
+            n_test = round(len(cat_imgs) * 0.10)
+            n_val = round(len(cat_imgs) * 0.10)
+            train_chunk = cat_imgs[n_test + n_val:]
+            train_pos.extend(train_chunk)
 
     assert len(train_pos) == 2401, f"Expected 2401 train pos, got {len(train_pos)}"
     return master_coco, train_pos, train_neg_pool
