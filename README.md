@@ -88,9 +88,24 @@ Validate zero data leakage ($\text{Train} \cap \text{Val} = \emptyset$, $\text{T
 python src/data/verify_splits.py
 ```
 
-### 3. Train Detectors (Example)
-All models are trained according to the frozen protocol documented in [docs/internal/experimental_protocol.md](docs/internal/experimental_protocol.md) (RTX 4060 8GB, single fixed `seed=42`). For example, to train YOLO11n on the 20% negative split:
+### 3. Train Detectors
+All models are trained according to the frozen protocol documented in [docs/internal/experimental_protocol.md](docs/internal/experimental_protocol.md) (RTX 4060 8GB, single fixed `seed=42`).
+
+Run the automated ratio sweep (trains all 5 ratio splits sequentially and aggregates test metrics):
 ```bash
+# YOLO11n ratio sweep (0%, 20%, 40%, 60%, 80%)
+python src/training/train_yolo_sweep.py --model yolo11n.pt
+
+# YOLO26n ratio sweep
+python src/training/train_yolo_sweep.py --model yolo26n.pt
+
+# D-FINE-N ratio sweep
+python src/training/train_dfine_sweep.py --dfine-dir DFINE
+```
+
+Alternatively, train individual splits directly with the CLI:
+```bash
+# Example: YOLO11n on the 20% negative split
 yolo detect train data=configs/yolo/yolo_20_low_neg.yaml model=yolo11n.pt epochs=100 batch=16 imgsz=640 seed=42 close_mosaic=10 optimizer=auto amp=True
 ```
 
@@ -108,7 +123,8 @@ yolo detect train data=configs/yolo/yolo_20_low_neg.yaml model=yolo11n.pt epochs
 │   ├── internal/          # Research questions, methodology, and notes
 │   └── manuscript/        # IEEE AIoT conference manuscript
 └── src/
-    └── data/              # Split generation and verification scripts
+    ├── data/              # Split generation and verification scripts
+    └── training/          # Automated ratio sweep runners (YOLO & D-FINE)
 ```
 
 

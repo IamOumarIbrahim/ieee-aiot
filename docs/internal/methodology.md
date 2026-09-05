@@ -16,7 +16,7 @@ YOLO11n: a one-stage, anchor-free CNN detector representing the current mainstre
 YOLO26n: the succeeding YOLO generation, included to test whether architectural refinements change sensitivity to negative-frame configuration relative to YOLO11n.
 D-FINE-N: a transformer-based, query-driven real-time detector, included to test whether a fundamentally different detection paradigm (set-based prediction vs. dense anchor-free prediction) responds differently to negative-frame manipulation than the CNN-based YOLO models.
 
-All three are evaluated at their smallest ("nano") variant to reflect realistic AIoT compute budgets. Table I reports each model's parameter count, FLOPs, and baseline inference latency measured on the target deployment platform; since latency is a function of model structure and input resolution, not training-data composition, it is reported as fixed context rather than as a dependent variable in the negative-frame experiments.
+All three are evaluated at their smallest ("nano") variant to reflect realistic AIoT compute budgets. Table I reports each model's parameter count, FLOPs, and baseline inference latency measured on the target edge deployment platform (NVIDIA Jetson Orin Nano 8 GB / edge GPU benchmark); since latency is a function of model structure and input resolution, not training-data composition, it is reported as fixed context rather than as a dependent variable in the negative-frame experiments.
 
 C. Negative-Frame Configurations
 
@@ -27,7 +27,7 @@ Two experimental axes isolate the effect of negative-frame training data, corres
 2) Hard-negative curation (RQ2). For each architecture, the ratio identified as best-performing in the RQ1 sweep is used as the anchor point for a controlled comparison: negatives sampled randomly at that ratio versus negatives sampled via a hard-negative mining protocol, at matched dataset size (so any difference reflects composition, not volume). The mining protocol is:
 
 Train a baseline model (the architecture's 0%-negative or lowest-ratio checkpoint) on the full negative-frame pool at inference time only.
-Retain negative frames on which the baseline produces a false-positive prediction above a fixed confidence threshold [τ].
+Retain negative frames on which the baseline produces a false-positive prediction above a fixed confidence threshold τ = 0.25 (the standard operating detection threshold in driver monitoring systems).
 If retained frames are fewer than the target ratio requires, backfill with randomly sampled negatives to match the matched dataset size exactly.
 
 This yields 3 architectures × 2 sampling strategies (random vs. hard, at the matched best ratio) = 6 additional runs, for 21 total training runs.

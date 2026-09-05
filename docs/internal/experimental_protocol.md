@@ -64,6 +64,12 @@ All models are trained across 5 nested negative-frame ratio levels with a fixed 
 2. **RQ2 (Hard-Negative Curation):** 3 architectures × 2 curation conditions (random vs. hard-mined at best ratio) = **6 runs**
 3. **Total Benchmark Scope:** **21 runs**
 
+#### RQ2 Hard-Negative Mining Specification
+* **Baseline Detector:** Checkpoint trained on `train_00_pos_only` (0% negative baseline).
+* **Mining Candidate Pool:** Full training negative candidate pool (10,178 background frames).
+* **Confidence Threshold ($\tau$):** $\tau = 0.25$ (frames yielding false-positive detections $\ge 0.25$ confidence are retained).
+* **Sample Matching:** Exactly matches the negative-frame count of the respective architecture's best RQ1 ratio; if mined frames $< N_{\text{target}}$, backfill with random negative samples.
+
 ---
 
 ### Command Templates (RTX 4060 8GB)

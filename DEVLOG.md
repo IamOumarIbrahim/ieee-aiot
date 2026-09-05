@@ -24,6 +24,8 @@ Formalized and froze the detector training protocol across YOLO11n, YOLO26n, and
 * Resolved internal documentation inconsistencies: fixed filename typo `introduction.md`, timeline date typo, restored Section III-E Evaluation Metrics, aligned table enumeration (Tables I–V), and harmonized Section IV-C/V operational cost cross-references across all drafts.
 * Established `docs/internal/results.md` blueprint for Section IV (IV-A ratio sweep, IV-B curation quality, IV-C deployment cost translation) embedding explicit single-seed claims boundaries.
 * Enhanced `src/data/verify_splits.py` to assert disk existence of train, val, and test dataloaders across all D-FINE configs, formalized bibliography in `docs/internal/related_work.md`, and drafted the official Abstract in `README.md`.
+* Formalized RQ2 hard-negative mining threshold ($\tau = 0.25$) and edge deployment platform (NVIDIA Jetson Orin Nano 8 GB) in `docs/internal/methodology.md` and `docs/internal/experimental_protocol.md`.
+* Implemented automated multi-split sweep runners (`src/training/train_yolo_sweep.py` and `src/training/train_dfine_sweep.py`) with automatic held-out test evaluation, FP/1k computation, and JSON summary logging for unattended execution.
 
 ---
 
