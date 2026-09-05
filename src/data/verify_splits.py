@@ -113,11 +113,13 @@ def main():
         with open(yml_path, "r") as f:
             d = yaml.safe_load(f)
         assert d["num_classes"] == 4, f"{yml}: expected 4 classes, got {d.get('num_classes')}"
-        ann_path = repo_root / d["train_dataloader"]["dataset"]["ann_file"]
-        img_path = repo_root / d["train_dataloader"]["dataset"]["img_folder"]
-        assert ann_path.exists(), f"Missing annotation file: {ann_path}"
-        assert img_path.exists(), f"Missing image folder: {img_path}"
-        print(f"  [OK] {yml} parsed & verified")
+        for loader_key in ["train_dataloader", "val_dataloader", "test_dataloader"]:
+            assert loader_key in d, f"{yml}: missing {loader_key}"
+            ann_path = repo_root / d[loader_key]["dataset"]["ann_file"]
+            img_path = repo_root / d[loader_key]["dataset"]["img_folder"]
+            assert ann_path.exists(), f"{yml} ({loader_key}): missing annotation file: {ann_path}"
+            assert img_path.exists(), f"{yml} ({loader_key}): missing image folder: {img_path}"
+        print(f"  [OK] {yml} parsed & all dataloaders (train/val/test) verified")
 
     print("\nALL VERIFICATIONS PASSED! Directory and configurations are 100% ready for training.")
 

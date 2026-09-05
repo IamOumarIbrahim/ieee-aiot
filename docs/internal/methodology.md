@@ -67,12 +67,11 @@ To ensure reproducible, hardware-isolated comparisons on an NVIDIA RTX 4060 (8 G
 
 E. Evaluation Metrics
 
-Each trained model is evaluated once on the fixed, natural-distribution test set (Section III-A) using:
-* **Precision, Recall, mAP@50, mAP@50:95:** standard detection accuracy metrics.
-* **False positives per 1,000 frames (FP/1k):** a deployment-oriented metric capturing nuisance-alert frequency independent of mAP, motivating the operational cost analysis in Section IV-C and Section V.
-* **Confidence calibration [optional, if included]:** reliability of predicted confidence scores across ratio conditions, evaluating whether negative-heavy training suppresses confidence or sharpens decision boundaries.
+Each trained model is evaluated on the fixed, natural-distribution test set (Section III-A) across the following core metrics:
+* **Detection Accuracy:** Precision, Recall, mAP@50, and mAP@50:95, evaluated under standard COCO evaluation protocols.
+* **Edge Deployment Metric:** False positives per 1,000 frames (FP/1k), capturing nuisance-alert frequency under continuous negative dominance independent of aggregate mAP, directly driving the operational cost translation in Section IV-C and Section V.
 
-Because each model configuration is evaluated via a single training run without repeated seeds, cross-architecture and cross-ratio comparisons report point estimates, evaluating the practical magnitude, trend directionality, and consistency of observed differences to address RQ1 and RQ2 directly.
+Because each model configuration is evaluated via a single training run without repeated seeds, cross-architecture and cross-ratio comparisons report point estimates, evaluating the practical magnitude, trend directionality, and consistency of observed differences to address RQ1 and RQ2 directly without inferential hypothesis testing.
 
 Table I: Detector Architecture & Baseline Efficiency (Parameters, FLOPs, Edge Latency)
 Table II: Experimental Run Summary (21 Training Runs across Ratios & Sampling Strategies)

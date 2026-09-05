@@ -33,6 +33,7 @@ RQ2 (Curation Quality):
 
 ### Abstract
 
+Edge AIoT object detectors, such as in-cabin driver monitoring systems, continuously process video streams where background-only (negative) frames dominate natural operational distributions (~81% negative prevalence). While incorporating negative frames during training mitigates false positives, prior studies tune negative-to-positive proportions in isolation for individual detector architectures. This paper presents the first controlled cross-architecture empirical investigation of negative-frame ratio sensitivity and curation quality across three lightweight edge detectors spanning distinct paradigms: YOLO11n (CNN), YOLO26n (next-gen CNN), and D-FINE-N (real-time DETR transformer). Evaluating five nested arithmetic ratio configurations (0% to 80% negative frames) and false-positive hard-negative curation at matched dataset volumes on a 15,723-frame driver monitoring corpus, we investigate whether optimal negative configurations generalize across detector lineages. Finally, we translate false-positive rates per 1,000 frames into estimated operational nuisance alerts per hour, demonstrating that training data curation directly governs edge deployment usability independent of model inference latency.
 
 ### Contributions
 

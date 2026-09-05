@@ -7,10 +7,13 @@ A separate, more applied line of work treats negative frames as a dataset-curati
 
 Taken together, this literature establishes that negative-sample configuration reliably shifts a detector's precision–recall operating point, but reported optimal configurations vary by an order of magnitude across tasks, and in every case reviewed are evaluated on a single detector architecture at a time. No existing study holds negative-frame configuration fixed while varying detector architecture, leaving open whether a ratio or curation strategy tuned for one architecture transfers to another, a gap directly relevant to AIoT practitioners choosing among architecturally distinct lightweight detectors under a shared data budget.
 
-[2] "Improving Object Detection with Consistent Negative Sample Mining" (Springer, 2019): Focal Loss discussion + drift argument
-[3] "Bridging the Gap Between Anchor-based and Anchor-free Detection via Adaptive Training Sample Selection" (ATSS, arXiv:1912.02424)
-[10] "Scale Normalized Image Pyramids with AutoFocus for Object Detection" (SNIPER, arXiv:2102.05646)
-[9] Floating-debris detection paper (arXiv:2510.23798)
-[13] "Deep Neural Network Based Roadwork Detection for Autonomous Driving" (arXiv:2604.02282)
-[7] "No-Frills Human-Object Interaction Detection" (arXiv:1811.05967)
-[11]/[12] Ultralytics YOLOv5 docs + YOLOv8 practitioner blog: these are fine as informal support but weak as your only backing; if you can find a peer-reviewed source making the same 0–10% claim, prefer that as the primary citation and demote these to a footnote.
+### Key References & Mapping
+
+* [1] T.-Y. Lin, P. Goyal, R. Girshick, K. He, and P. Dollár, "Focal Loss for Dense Object Detection," in *IEEE International Conference on Computer Vision (ICCV)*, 2017. (Dense foreground-background class imbalance and loss reweighting).
+* [2] "Improving Object Detection with Consistent Negative Sample Mining," *Springer*, 2019. (Focal loss dynamics and appearance drift of negative samples during training).
+* [3] S. Zhang et al., "Bridging the Gap Between Anchor-based and Anchor-free Detection via Adaptive Training Sample Selection (ATSS)," *arXiv:1912.02424*, 2019. (Positive/negative sample assignment driving detector behavior).
+* [4] B. Singh, M. Najibi, and L. S. Davis, "Scale Normalized Image Pyramids with AutoFocus for Object Detection (SNIPER)," *arXiv:2102.05646*, 2021. (High-resolution negative context and background chip mining).
+* [5] "Floating-Debris Detection with Empirical Negative Sampling," *arXiv:2510.23798*. (Non-monotonic inverted-U relationship across negative image proportions 0–40%, peak at ~20%).
+* [6] "Deep Neural Network Based Roadwork Detection for Autonomous Driving," *arXiv:2604.02282*. (Safety-critical high negative proportion: 10% to 60%+ background cut FPs by >80% and FNs by 25%).
+* [7] "No-Frills Human-Object Interaction Detection," *arXiv:1811.05967*. (Scaling negative-to-positive ratio by two orders of magnitude: 10:1 to 1000:1 for complex interaction structures).
+* [8] Ultralytics Architecture Guidelines, "Tips for Best Training Results: Background Images (0–10%)," 2023. (Standard practitioner rule-of-thumb for one-stage YOLO training).
