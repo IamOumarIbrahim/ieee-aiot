@@ -88,11 +88,11 @@ python src/data/verify_splits.py
 ```
 
 ### 3. Train Detectors (Example)
-Train any model with Ultralytics YOLO using the corresponding configuration:
+All models are trained according to the frozen protocol documented in [docs/internal/experimental_protocol.md](docs/internal/experimental_protocol.md) (RTX 4060 8GB, single fixed `seed=42`). For example, to train YOLO11n on the 20% negative split:
 ```bash
-# Example: YOLO11n on the 20% negative split
-yolo detect train data=configs/yolo/yolo_20_low_neg.yaml model=yolo11n.pt epochs=50 imgsz=640
+yolo detect train data=configs/yolo/yolo_20_low_neg.yaml model=yolo11n.pt epochs=100 batch=16 imgsz=640 seed=42 close_mosaic=10 optimizer=auto amp=True
 ```
+
 
 ## Repository Organization
 

@@ -1,5 +1,28 @@
 # Development Log
 
+## [2026-09-05] - Experimental Protocol & Training Configuration Freeze (RTX 4060 8GB)
+
+### Overview
+Formalized and froze the detector training protocol across YOLO11n, YOLO26n, and D-FINE-N tailored for an NVIDIA RTX 4060 (8 GB VRAM) training environment. Established hardware-adapted batch execution parameters, native optimization budgets, official learning rates, and explicit methodological guardrails.
+
+---
+
+### Key Changes & Implementations
+
+#### 1. Hardware-Adapted Configuration Freeze
+* Established unified 640 × 640 resolution and mixed precision (AMP) across all three detector families.
+* Configured physical batch size 16 for YOLO11n and YOLO26n, and physical batch size 4 with 8-step gradient accumulation for D-FINE-N (effective batch size 32), documented explicitly as a hardware adaptation rather than an official native batch configuration.
+* Locked training budgets and augmentation cooldowns: 100 epochs with `close_mosaic=10` for YOLO models; 160 epochs with `stop_epoch=148` for D-FINE-N.
+* Retained official unscaled learning rates for D-FINE-N (0.0004 backbone, 0.0008 head/transformer, 0.0001 weight decay, 0.9999 EMA restart decay). Retained Ultralytics optimizer `auto` selection with 0.0005 weight decay.
+
+#### 2. Protocol Guardrails & Methodological Alignment
+* **Single fixed random seed:** Confirmed single-seed evaluation (`seed=42`) without multi-seed averaging (no 13/37/73 seeds) to respect compute budgets while ensuring zero cross-ratio confounding.
+* **No subject-disjoint split:** Kept strictly to the verified 80/10/10 stratified random partition across 15,723 frames; rejected subject-disjoint 8/3/3 splits from other protocols.
+* Created `docs/internal/experimental_protocol.md` with complete tabular specifications, key methodological statement, and execution commands.
+* Synchronized `docs/internal/methodology.md` (Section III-A/C frame counts and Section III-D Training Protocol) and `README.md`.
+
+---
+
 ## [2026-09-05] - Experimental Framework & Dataset Split Configuration
 
 ### Overview
