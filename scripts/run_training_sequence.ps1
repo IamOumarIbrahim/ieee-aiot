@@ -64,6 +64,12 @@ $ErrorActionPreference = "Continue"
 $env:PYTHONWARNINGS = "ignore"
 $RepoRoot = (Resolve-Path "$PSScriptRoot\..").Path
 
+# Guard: Skip redundant single-split test (#5) per user request
+if ($Splits -eq "20" -or $Splits -eq "train_20_low_neg") {
+    Write-Host "`n[SKIP] Single-split test (-Splits '$Splits') skipped per user configuration.`n" -ForegroundColor Cyan
+    exit 0
+}
+
 Write-Host "============================================================" -ForegroundColor Cyan
 Write-Host "  IEEE AIoT Driver Monitoring - Training Sequence Runner   " -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
@@ -147,6 +153,10 @@ foreach ($Det in $DetectorsToRun) {
 
     } elseif ($Det -eq "dfine") {
         $DfineDir = "$RepoRoot\DFINE"
+        if (-not (Test-Path "$DfineDir\train.py")) {
+            Write-Host "  [NOTICE] Upstream D-FINE engine not found at $DfineDir. Cloning Peterande/D-FINE..." -ForegroundColor Yellow
+            git clone https://github.com/Peterande/D-FINE.git $DfineDir
+        }
         $DfineArgs = @(
             "$RepoRoot\src\training\train_dfine_sweep.py",
             "--dfine-dir", $DfineDir,
