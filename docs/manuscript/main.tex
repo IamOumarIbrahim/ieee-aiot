@@ -1,0 +1,158 @@
+﻿%% IEEE AIoT 2026 --- Conference Paper Submission
+%% DOUBLE-BLIND SUBMISSION
+%% Template: IEEE Conference Template (June 2024 revision)
+%% Track:    Track 3 --- Edge, Cloud, and Fog Computing in IoT
+%% Limit:    8 pages (review)
+%%
+\documentclass[conference]{IEEEtran}
+\IEEEoverridecommandlockouts
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{array}
+\def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
+    T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
+\begin{document}
+\title{Negative Frames Are Not Architecture-Agnostic: A Cross-Detector
+       Study of Negative-Frame Configuration for Edge AIoT Driver Monitoring}
+\author{\IEEEauthorblockN{Anonymous Authors}
+\IEEEauthorblockA{Institution redacted for double-blind review}}
+\maketitle
+\begin{abstract}
+Edge AIoT object detectors, such as in-cabin driver-monitoring systems,
+continuously process video streams in which background-only (negative) frames
+dominate the natural operational distribution (approximately 81\% negative
+prevalence). While incorporating negative frames during training mitigates false
+positives, prior work tunes the negative-to-positive proportion in isolation for
+individual detector architectures, leaving open whether an optimally tuned
+configuration transfers across architecturally distinct models. This paper presents
+the first controlled, cross-architecture empirical investigation of negative-frame
+ratio sensitivity and curation quality across three lightweight edge detectors:
+YOLO11n (anchor-free CNN), YOLO26n (next-generation CNN), and D-FINE-N
+(transformer-based real-time DETR). Evaluating five nested ratio configurations
+(0\% to 80\% negative frames) and a hard-negative mining strategy at matched
+dataset size on a 15,723-frame driver-monitoring corpus, we determine whether
+the performance-maximizing negative-frame ratio is architecture-invariant or
+architecture-specific. We further translate false-positive rates per 1,000 frames
+into estimated nuisance-alert rates per hour, demonstrating that training-data
+curation directly governs edge deployment usability independently of model
+inference latency.
+\end{abstract}
+\begin{IEEEkeywords}
+AIoT, edge intelligence, driver monitoring, object detection, negative frames,
+hard-negative mining, YOLO, D-FINE, false-positive rate, edge deployment
+\end{IEEEkeywords}
+\section{Introduction}
+Object detectors deployed in AIoT systems---such as in-cabin driver monitoring,
+smart surveillance, and industrial defect inspection---operate under a condition
+that standard computer-vision benchmarks rarely reflect: the vast majority of
+frames encountered at inference time contain \emph{no} target object.
+A driver-monitoring camera streams continuously for hours per trip, yet the events
+it must flag (distraction, drowsiness, unsafe behavior) occupy only a small fraction
+of that stream.
+This asymmetry means a detector's behavior on background-only frames---rather than
+its accuracy on object-dense benchmark images---ultimately determines whether the
+system is usable in the field.
+A model prone to false positives on ordinary footage produces nuisance alerts that
+erode user trust, waste edge compute cycles, and, in bandwidth- or
+battery-constrained AIoT deployments, trigger unnecessary uplink transmissions or
+actuator responses.
+
+The standard mitigation is to include negative (background-only) frames during
+training, and prior work confirms this lever is powerful.
+Reported optimal negative-frame proportions range from single
+digits~\cite{b8} to over 60\% of the training set in safety-critical driving
+contexts~\cite{b6}, with performance following a non-monotonic, inverted-U
+relationship: too few negatives leave false positives unaddressed, while too many
+suppress recall by pushing the detector toward over-conservative predictions~\cite{b5}.
+However, every empirical study we are aware of tunes this parameter for a
+\emph{single} detector architecture in isolation.
+It remains unknown whether a negative-frame configuration---including ratio or the
+choice between random and hard-mined negatives---tuned for one architecture
+transfers to another, or whether the optimum is itself architecture-dependent.
+
+This is not a minor gap.
+AIoT practitioners routinely choose among CNN-based, anchor-free, and
+transformer-based lightweight detectors under a shared, fixed data-curation budget.
+If the answer to ``how many negative frames do I need'' changes with the architecture
+choice, then architecture selection and data-curation decisions cannot be made
+independently---as much current practice implicitly assumes.
+
+This paper addresses that gap through a controlled, cross-architecture study of
+negative-frame configuration on a real-world, safety-critical AIoT dataset.
+Using an in-cabin driver-monitoring corpus with a naturally occurring 19:81
+positive-to-negative frame ratio, we train three lightweight detectors spanning
+distinct design paradigms (YOLO11n, YOLO26n, and D-FINE-N) under systematically
+varied negative-frame ratios and sampling strategies, holding all other training
+factors fixed. We ask:
+\begin{itemize}
+  \item \textbf{RQ1:} Does the negative-frame ratio that maximizes detection
+        performance differ across detector architectures, or does a single
+        configuration generalize?
+  \item \textbf{RQ2:} At each architecture's best ratio, does replacing randomly
+        sampled negatives with hard-mined negatives (frames on which a baseline
+        model produces false positives) yield further, architecture-dependent gains?
+\end{itemize}
+
+Our contributions are threefold:
+\begin{enumerate}
+  \item \textbf{Cross-architecture negative-frame benchmark.} The first empirical
+        sweep of negative-frame ratio sensitivity across three lightweight detectors
+        spanning CNN and transformer paradigms, on a real, safety-critical AIoT
+        dataset (in-cabin driver monitoring).
+  \item \textbf{Hard-negative curation protocol and cost-benefit analysis.} A
+        mining strategy targeting false-positive-prone background frames, with a
+        controlled comparison against random sampling at matched dataset size.
+  \item \textbf{Operational deployment-cost reframing.} A translation of FP-per-frame
+        differences into nuisance-alert rates per hour, connecting an accuracy metric
+        to a deployment consequence AIoT system designers plan around, while explicitly
+        separating inference latency (architecture-bound) from FP rate (training-data-bound).
+\end{enumerate}
+\section{Related Work}
+\subsection{Class Imbalance and Negative Sampling in Object Detection}
+Negative sampling has long been recognized as a first-order design choice in
+object-detector training. At the loss level, Focal Loss~\cite{b1} was introduced
+because the vast number of easy negatives in dense-prediction detectors overwhelms
+training signals from the rare foreground class; it addresses imbalance through
+adaptive loss reweighting rather than through the ratio of negative instances itself.
+Related work shows that negatives are not static targets during training: they can
+drift toward foreground appearance as training proceeds, confusing the detector's
+foreground-background boundary and motivating dynamic re-selection~\cite{b2}.
+
+In anchor-based versus anchor-free comparisons, the rule used to assign positive
+and negative training samples has been shown to have a larger effect on final
+performance than the underlying regression formulation~\cite{b3}, reinforcing that
+sample assignment---rather than architecture alone---is a primary driver of
+detection behavior. At the region level, mining strategies that surface visually
+confusable background chips measurably raise mAP relative to training on
+positive-only regions~\cite{b4}.
+
+\subsection{Negative-Frame Ratio as a Dataset-Curation Lever}
+Standard guidance for one-stage YOLO detectors recommends including roughly 0--10\%
+background-only images to reduce false positives~\cite{b8}, without cross-architecture
+validation. Direct empirical sweeps reveal a non-monotonic relationship: one study
+varying the proportion from 0\% to 40\% across two YOLO variants found that recall
+and mAP@50 peaked near 20\% before declining, with excess negatives causing
+over-conservative predictions~\cite{b5}. In a safety-critical driving context, a
+far higher proportion was needed: raising background images from 10\% to over 60\%
+cut false positives by more than 80\% while also reducing false negatives by
+25\%~\cite{b6}, suggesting the effective operating point is strongly domain-dependent.
+In human--object interaction detection, scaling the negative-to-positive pair ratio
+from roughly 10:1 to 1000:1 produced a large, consistent performance gain~\cite{b7},
+underscoring how strongly the ``correct'' configuration depends on task structure.
+
+\subsection{Research Gap}
+Taken together, this literature establishes that negative-sample configuration
+reliably shifts a detector's precision-recall operating point, and that the effective
+optimum varies dramatically across tasks and domains. However, in every case reviewed,
+the evaluation is conducted on a \emph{single} detector architecture at a time. No
+existing study holds negative-frame configuration fixed while \emph{varying} detector
+architecture, leaving open the key question of whether a ratio or curation strategy
+tuned for one model transfers to another. This is precisely the question AIoT
+practitioners face when choosing among architecturally distinct lightweight detectors
+under a shared data budget---a gap our work fills directly.

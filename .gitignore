@@ -1,2 +1,12 @@
 docs/manuscript/official_template
 /data/
+__pycache__/
+*.pyc
+*.pt
+*.pth
+output/
+runs/
+*.aux
+*.log
+*.out
+*.synctex.gz

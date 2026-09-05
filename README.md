@@ -91,22 +91,51 @@ python src/data/verify_splits.py
 ### 3. Train Detectors
 All models are trained according to the frozen protocol documented in [docs/internal/experimental_protocol.md](docs/internal/experimental_protocol.md) (RTX 4060 8GB, single fixed `seed=42`).
 
-Run the automated ratio sweep (trains all 5 ratio splits sequentially and aggregates test metrics):
-```bash
-# YOLO11n ratio sweep (0%, 20%, 40%, 60%, 80%)
-python src/training/train_yolo_sweep.py --model yolo11n.pt
+#### Option A: Automated PowerShell Sequence Runner (Recommended)
+Run dry-run verification or full multi-detector sweeps directly in PowerShell:
+```powershell
+# Dry-run validation (checks environment, CUDA, splits, manifests, and configs)
+.\scripts\run_training_sequence.ps1 -Detector yolo11n -DryRun
 
-# YOLO26n ratio sweep
-python src/training/train_yolo_sweep.py --model yolo26n.pt
+# Full 5-ratio training sweep for YOLO11n (0%, 20%, 40%, 60%, 80%)
+.\scripts\run_training_sequence.ps1 -Detector yolo11n
 
-# D-FINE-N ratio sweep
-python src/training/train_dfine_sweep.py --dfine-dir DFINE
+# Full 5-ratio training sweep for YOLO26n
+.\scripts\run_training_sequence.ps1 -Detector yolo26n
+
+# Full 5-ratio training sweep for D-FINE-N
+.\scripts\run_training_sequence.ps1 -Detector dfine
+
+# Smoke test on a single split (1 epoch)
+.\scripts\run_training_sequence.ps1 -Detector yolo11n -Splits "00" -Epochs 1
 ```
 
-Alternatively, train individual splits directly with the CLI:
-```bash
+#### Option B: Direct Python Ratio Sweep Scripts
+```powershell
+# YOLO11n ratio sweep
+python src\training\train_yolo_sweep.py --model yolo11n.pt
+
+# YOLO26n ratio sweep
+python src\training\train_yolo_sweep.py --model yolo26n.pt
+
+# D-FINE-N ratio sweep
+python src\training\train_dfine_sweep.py --dfine-dir DFINE
+```
+
+#### Option C: Individual Split CLI Commands
+```powershell
 # Example: YOLO11n on the 20% negative split
-yolo detect train data=configs/yolo/yolo_20_low_neg.yaml model=yolo11n.pt epochs=100 batch=16 imgsz=640 seed=42 close_mosaic=10 optimizer=auto amp=True
+yolo detect train data=configs/yolo/yolo_20_low_neg.yaml model=yolo11n.pt epochs=100 batch=16 imgsz=640 seed=42 close_mosaic=10 optimizer=auto amp=False
+```
+
+### 4. Hard-Negative Mining (RQ2 Curation)
+Once baseline detector (`train_00_pos_only`) training finishes, curate hard negatives from the 10,178 background candidate pool at matched ratio count:
+```powershell
+python src\data\mine_hard_negatives.py `
+  --weights runs\yolo11n_ratio_sweep\train_00_pos_only\weights\best.pt `
+  --target-count 600 `
+  --tau 0.25 `
+  --tag yolo11n_best_curated
 ```
 
 

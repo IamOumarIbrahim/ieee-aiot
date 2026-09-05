@@ -1,5 +1,36 @@
 # Development Log
 
+## [2026-09-05] - Training Sequence Diagnostics, Windows cuBLAS Fixes, and RQ2 Pipeline Completion
+
+### Overview
+Conducted comprehensive end-to-end debugging and validation of the training and evaluation execution pipelines on Windows PowerShell with an NVIDIA GeForce RTX 4060 Laptop GPU. Identified and resolved all architectural, numerical, and runtime bugs blocking PowerShell execution of the paper's benchmark protocol.
+
+---
+
+### Key Changes & Bug Fixes
+
+#### 1. Recursive YAML Resolution in `src/data/verify_splits.py`
+* **Issue:** `verify_splits.py` crashed with `KeyError: 'num_classes'` because D-FINE configuration YAMLs use hierarchical inheritance (`__include__`) where parameters like `num_classes` reside in base configs.
+* **Resolution:** Implemented recursive `load_yaml_with_includes` and `deep_merge` in `src/data/verify_splits.py` and `src/training/train_dfine_sweep.py`. Verified all 6 D-FINE configurations, COCO JSONs, and YOLO YAMLs pass with 100% integrity.
+
+#### 2. Batched FP/1k Inference & VRAM OOM Prevention
+* **Issue:** `calculate_fp_per_1k` passed all 1,272 test images to `model.predict()` simultaneously, causing CUDA Out-of-Memory crashes on 8 GB VRAM.
+* **Resolution:** Batched inference in chunks of 32 images with explicit `del results`, `del model`, `gc.collect()`, and `torch.cuda.empty_cache()`. Added automated export of clean Markdown summary tables (`{model}_sweep_summary.md`) alongside JSON logs.
+
+#### 3. Windows cuBLAS `CUBLAS_STATUS_INTERNAL_ERROR` Resolution
+* **Issue:** On Windows with PyTorch 2.6.0+cu124 on Ada Lovelace GPUs (RTX 4060), `cublasGemmStridedBatchedEx` in FP16/BF16 raises `RuntimeError: CUDA error: CUBLAS_STATUS_INTERNAL_ERROR`. Ultralytics `check_amp()` triggers this error on attention blocks and aborts training because it only catches `AssertionError`.
+* **Resolution:** Added `--amp` flag (defaulting to `False`) to `src/training/train_yolo_sweep.py` and `-Amp` switch to `scripts/run_training_sequence.ps1`. In full precision FP32 (`amp=False`), training runs flawlessly via `cublasSgemm`, utilizing only ~1.5 GB of the 8 GB VRAM budget at batch 16.
+
+#### 4. Missing RQ2 Hard-Negative Mining Pipeline (`src/data/mine_hard_negatives.py`)
+* **Issue:** The repository lacked an executable implementation of the RQ2 curation protocol specified in the paper.
+* **Resolution:** Implemented `src/data/mine_hard_negatives.py`, reconstructing the 10,178 training candidate pool, evaluating false positives at $\tau = 0.25$, ranking candidate frames, deterministically backfilling (`seed=42`) to match the target sample count, and generating all YOLO text manifests, COCO JSONs, D-FINE configs, and curation audit logs.
+
+#### 5. PowerShell Native Training Runner (`scripts/run_training_sequence.ps1`)
+* **Issue:** Prior documentation contained bash-specific line-continuation backslashes (`\`) and lacked native PowerShell orchestration, while `$ErrorActionPreference = "Stop"` aborted execution on PyTorch library warnings emitted to stderr.
+* **Resolution:** Created `scripts/run_training_sequence.ps1` and `scripts/check_env.py` with `PYTHONWARNINGS="ignore"` and robust exit-code propagation. Updated `README.md` and `docs/internal/experimental_protocol.md` with tested PowerShell commands. Validated end-to-end with a 1-epoch training test on the RTX 4060 GPU.
+
+---
+
 ## [2026-09-05] - Experimental Protocol & Training Configuration Freeze (RTX 4060 8GB)
 
 ### Overview

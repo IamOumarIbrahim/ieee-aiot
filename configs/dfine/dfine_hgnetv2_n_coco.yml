@@ -1,83 +1,24 @@
-# D-FINE-N Default Configuration (Driver Monitoring System - IEEE AIoT Benchmark)
+# D-FINE-N Shared Base Configuration (Driver Monitoring System - IEEE AIoT Benchmark)
 # Architecture: D-FINE-N (Nano variant, HGNetv2-B0 backbone)
 # Target Hardware: RTX 4060 (8 GB VRAM) Hardware Adaptation Protocol
 
-task: detection
+__include__: [
+  '../dataset/coco_detection.yml',
+  '../runtime.yml',
+  './include/dataloader.yml',
+  './include/optimizer.yml',
+  './include/dfine_hgnetv2.yml',
+]
 
-evaluator:
-  type: CocoEvaluator
-  iou_types: ['bbox']
+output_dir: ./output/dfine_hgnetv2_n_coco
 
 num_classes: 4
 remap_mscoco_category: False
 
-# Class definition (matches dataset annotations and YOLO YAMLs)
+# Class definitions (matching dataset annotations and YOLO YAMLs)
 names: ['yawning', 'hand_over_mouth', 'drinking', 'phone_use']
 
-# Default points to Dominant-Negative Cap (80% ratio)
-train_dataloader:
-  type: DataLoader
-  dataset:
-    type: CocoDetection
-    img_folder: data/processed/RGB/
-    ann_file: data/processed/RGB/coco/dfine/instances_train.json
-    return_masks: False
-    transforms:
-      ops:
-        - {type: RandomPhotometricDistort, p: 0.5}
-        - {type: RandomZoomOut, fill: 0}
-        - {type: RandomIoUCrop, p: 0.8}
-        - {type: SanitizeBoundingBoxes, min_size: 1}
-        - {type: RandomHorizontalFlip}
-        - {type: Resize, size: [640, 640]}
-        - {type: SanitizeBoundingBoxes, min_size: 1}
-        - {type: ConvertPILImage, dtype: 'float32', scale: True}
-        - {type: ConvertBoxes, fmt: 'cxcywh', normalize: True}
-  shuffle: True
-  batch_size: 4
-  num_workers: 4
-  drop_last: True
-  collate_fn:
-    type: BatchImageCollateFuncion
-    stop_epoch: 148
-
-val_dataloader:
-  type: DataLoader
-  dataset:
-    type: CocoDetection
-    img_folder: data/processed/RGB/
-    ann_file: data/processed/RGB/coco/dfine/instances_val.json
-    return_masks: False
-    transforms:
-      ops:
-        - {type: Resize, size: [640, 640]}
-        - {type: ConvertPILImage, dtype: 'float32', scale: True}
-  shuffle: False
-  batch_size: 8
-  num_workers: 4
-  drop_last: False
-  collate_fn:
-    type: BatchImageCollateFuncion
-
-test_dataloader:
-  type: DataLoader
-  dataset:
-    type: CocoDetection
-    img_folder: data/processed/RGB/
-    ann_file: data/processed/RGB/coco/dfine/instances_test.json
-    return_masks: False
-    transforms:
-      ops:
-        - {type: Resize, size: [640, 640]}
-        - {type: ConvertPILImage, dtype: 'float32', scale: True}
-  shuffle: False
-  batch_size: 8
-  num_workers: 4
-  drop_last: False
-  collate_fn:
-    type: BatchImageCollateFuncion
-
-# Model Architecture (D-FINE-N / HGNetv2-B0)
+# Backbone Pretrained flag set to True for fair comparison with COCO-pretrained YOLO models
 DFINE:
   backbone: HGNetv2
 
@@ -87,6 +28,7 @@ HGNetv2:
   freeze_at: -1
   freeze_norm: False
   use_lab: True
+  pretrained: True
 
 HybridEncoder:
   in_channels: [512, 1024]
@@ -108,30 +50,86 @@ DFINETransformer:
   num_queries: 300
   reg_scale: 4
   dec_layer_number: 3
+  num_points: [6, 6]
 
-# Optimization & Training Schedule (RTX 4060 8GB Frozen Protocol)
+# Optimization & Training Schedule (RTX 4060 8GB Frozen Protocol: 160 epochs, stop_epoch 148)
 epochs: 160
 epoches: 160
-clip_max_norm: 0.1
-use_amp: True
-seed: 42
-batch_size: 4
-accumulate_steps: 8  # 4 physical * 8 accum = 32 effective batch size
 
 optimizer:
   type: AdamW
-  lr: 0.0008
-  weight_decay: 0.0001
   params:
     - params: '^(?=.*backbone)(?!.*norm).*$'
       lr: 0.0004
-    - params: '^(?=.*(?:encoder|decoder))(?=.*(?:norm|bn)).*$'
+    - params: '^(?=.*backbone)(?=.*norm|bn).*$'
+      lr: 0.0004
       weight_decay: 0.0
+    - params: '^(?=.*(?:encoder|decoder))(?=.*(?:norm|bn|bias)).*$'
+      weight_decay: 0.0
+  lr: 0.0008
+  betas: [0.9, 0.999]
+  weight_decay: 0.0001
 
-ema:
-  type: ModelEMA
-  decay: 0.9999
-  warmups: 1000
-  start: 0
+train_dataloader:
+  dataset:
+    type: CocoDetection
+    img_folder: data/processed/RGB/
+    ann_file: data/processed/RGB/coco/dfine/instances_train.json
+    return_masks: False
+    transforms:
+      ops:
+        - {type: RandomPhotometricDistort, p: 0.5}
+        - {type: RandomZoomOut, fill: 0}
+        - {type: RandomIoUCrop, p: 0.8}
+        - {type: SanitizeBoundingBoxes, min_size: 1}
+        - {type: RandomHorizontalFlip}
+        - {type: Resize, size: [640, 640]}
+        - {type: SanitizeBoundingBoxes, min_size: 1}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+        - {type: ConvertBoxes, fmt: 'cxcywh', normalize: True}
+      policy:
+        name: stop_epoch
+        epoch: 148
+  shuffle: True
+  total_batch_size: 4
+  num_workers: 4
+  drop_last: True
+  collate_fn:
+    type: BatchImageCollateFunction
+    stop_epoch: 148
+    ema_restart_decay: 0.9999
+    base_size_repeat: ~
 
-output_dir: ./output/dfine_hgnetv2_n_coco
+val_dataloader:
+  dataset:
+    type: CocoDetection
+    img_folder: data/processed/RGB/
+    ann_file: data/processed/RGB/coco/dfine/instances_val.json
+    return_masks: False
+    transforms:
+      ops:
+        - {type: Resize, size: [640, 640]}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+  shuffle: False
+  total_batch_size: 8
+  num_workers: 4
+  drop_last: False
+  collate_fn:
+    type: BatchImageCollateFunction
+
+test_dataloader:
+  dataset:
+    type: CocoDetection
+    img_folder: data/processed/RGB/
+    ann_file: data/processed/RGB/coco/dfine/instances_test.json
+    return_masks: False
+    transforms:
+      ops:
+        - {type: Resize, size: [640, 640]}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+  shuffle: False
+  total_batch_size: 8
+  num_workers: 4
+  drop_last: False
+  collate_fn:
+    type: BatchImageCollateFunction

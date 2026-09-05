@@ -98,6 +98,31 @@ def main():
         print(f"  [OK] {yml} successfully parsed by Ultralytics")
 
     print("\n=== 6. D-FINE YAML CONFIG VERIFICATION ===")
+    def deep_merge(base, update):
+        merged = dict(base)
+        for k, v in update.items():
+            if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
+                merged[k] = deep_merge(merged[k], v)
+            else:
+                merged[k] = v
+        return merged
+
+    def load_yaml_with_includes(file_path):
+        file_path = Path(file_path).resolve()
+        with open(file_path, "r") as f:
+            data = yaml.safe_load(f) or {}
+        merged = {}
+        if "__include__" in data:
+            includes = data["__include__"]
+            if isinstance(includes, str):
+                includes = [includes]
+            for inc in includes:
+                inc_path = (file_path.parent / inc).resolve()
+                base_data = load_yaml_with_includes(inc_path)
+                merged = deep_merge(merged, base_data)
+        merged = deep_merge(merged, data)
+        return merged
+
     dfine_configs_dir = repo_root / "configs" / "dfine"
     dfine_ymls = [
         "dfine_hgnetv2_n_coco.yml",
@@ -110,13 +135,15 @@ def main():
     for yml in dfine_ymls:
         yml_path = dfine_configs_dir / yml
         assert yml_path.exists(), f"Missing D-FINE config: {yml_path}"
-        with open(yml_path, "r") as f:
-            d = yaml.safe_load(f)
-        assert d["num_classes"] == 4, f"{yml}: expected 4 classes, got {d.get('num_classes')}"
+        d = load_yaml_with_includes(yml_path)
+        assert d.get("num_classes") == 4, f"{yml}: expected 4 classes, got {d.get('num_classes')}"
         for loader_key in ["train_dataloader", "val_dataloader", "test_dataloader"]:
             assert loader_key in d, f"{yml}: missing {loader_key}"
-            ann_path = repo_root / d[loader_key]["dataset"]["ann_file"]
-            img_path = repo_root / d[loader_key]["dataset"]["img_folder"]
+            assert "dataset" in d[loader_key], f"{yml}: missing dataset in {loader_key}"
+            ann_rel = d[loader_key]["dataset"]["ann_file"]
+            img_rel = d[loader_key]["dataset"]["img_folder"]
+            ann_path = repo_root / ann_rel
+            img_path = repo_root / img_rel
             assert ann_path.exists(), f"{yml} ({loader_key}): missing annotation file: {ann_path}"
             assert img_path.exists(), f"{yml} ({loader_key}): missing image folder: {img_path}"
         print(f"  [OK] {yml} parsed & all dataloaders (train/val/test) verified")

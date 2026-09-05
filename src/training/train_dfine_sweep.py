@@ -50,9 +50,47 @@ def main():
     if args.dry_run:
         print("[DRY-RUN] Checking D-FINE installation and config paths:")
         print(f"  - D-FINE engine train.py exists: {train_py.exists()} ({train_py})")
+        import yaml
+
+        def deep_merge(base, update):
+            merged = dict(base)
+            for k, v in update.items():
+                if k in merged and isinstance(merged[k], dict) and isinstance(v, dict):
+                    merged[k] = deep_merge(merged[k], v)
+                else:
+                    merged[k] = v
+            return merged
+
+        def load_yaml_with_includes(file_path):
+            file_path = Path(file_path).resolve()
+            with open(file_path, "r") as f:
+                data = yaml.safe_load(f) or {}
+            merged = {}
+            if "__include__" in data:
+                includes = data["__include__"]
+                if isinstance(includes, str):
+                    includes = [includes]
+                for inc in includes:
+                    inc_path = (file_path.parent / inc).resolve()
+                    base_data = load_yaml_with_includes(inc_path)
+                    merged = deep_merge(merged, base_data)
+            merged = deep_merge(merged, data)
+            return merged
+
         for s in selected_splits:
             cfg = repo_root / s["config"]
-            print(f"  - {s['name']}: {cfg.exists()} ({cfg})")
+            exists = cfg.exists()
+            status = "FOUND" if exists else "MISSING"
+            print(f"  - {s['name']}: [{status}] ({cfg})")
+            if exists:
+                try:
+                    data = load_yaml_with_includes(cfg)
+                    num_cls = data.get("num_classes")
+                    ann = data.get("train_dataloader", {}).get("dataset", {}).get("ann_file")
+                    ann_exists = (repo_root / ann).exists() if ann else False
+                    print(f"      Verified: classes={num_cls}, ann_file={ann} (exists={ann_exists})")
+                except Exception as e:
+                    print(f"      [ERROR loading YAML]: {e}")
         print("\nDry run completed.")
         return
 
@@ -60,6 +98,18 @@ def main():
         print(f"[ERROR] D-FINE train.py not found at: {train_py}")
         print("Please clone Peterande/D-FINE (e.g. `git clone https://github.com/Peterande/D-FINE.git DFINE`) or specify --dfine-dir.")
         sys.exit(1)
+
+    # Ensure D-FINE can find data directory when executed from dfine_path
+    dfine_data = dfine_path / "data"
+    repo_data = repo_root / "data"
+    if not dfine_data.exists() and repo_data.exists():
+        try:
+            if sys.platform == "win32":
+                subprocess.run(["cmd", "/c", "mklink", "/J", str(dfine_data), str(repo_data)], check=False, stdout=subprocess.DEVNULL)
+            else:
+                os.symlink(str(repo_data), str(dfine_data))
+        except Exception:
+            pass
 
     env = os.environ.copy()
     env["CUDA_VISIBLE_DEVICES"] = args.device
@@ -72,14 +122,15 @@ def main():
             sys.executable,
             str(train_py),
             "-c", str(cfg_abs),
-            "--amp",
+            "--use-amp",
             "--seed", "42"
         ]
 
         print(f"  Command: {' '.join(cmd)}")
         ret = subprocess.run(cmd, cwd=str(dfine_path), env=env)
         if ret.returncode != 0:
-            print(f"[WARNING] Run {s['name']} exited with code {ret.returncode}")
+            print(f"[ERROR] Run {s['name']} failed with returncode {ret.returncode}")
+            sys.exit(ret.returncode)
         else:
             print(f"  [OK] Run {s['name']} finished successfully.")
 

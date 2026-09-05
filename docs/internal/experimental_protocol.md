@@ -68,54 +68,76 @@ All models are trained across 5 nested negative-frame ratio levels with a fixed 
 * **Baseline Detector:** Checkpoint trained on `train_00_pos_only` (0% negative baseline).
 * **Mining Candidate Pool:** Full training negative candidate pool (10,178 background frames).
 * **Confidence Threshold ($\tau$):** $\tau = 0.25$ (frames yielding false-positive detections $\ge 0.25$ confidence are retained).
-* **Sample Matching:** Exactly matches the negative-frame count of the respective architecture's best RQ1 ratio; if mined frames $< N_{\text{target}}$, backfill with random negative samples.
+* **Sample Matching:** Exactly matches the negative-frame count of the respective architecture's best RQ1 ratio; if mined frames $< N_{\text{target}}$, backfill with deterministic negative samples (`seed=42`).
+* **Mining Execution:**
+  ```powershell
+  python src\data\mine_hard_negatives.py `
+    --weights runs\yolo11n_ratio_sweep\train_00_pos_only\weights\best.pt `
+    --target-count 600 `
+    --tau 0.25 `
+    --tag yolo11n_best_curated
+  ```
 
 ---
 
-### Command Templates (RTX 4060 8GB)
+### Command Templates (RTX 4060 8GB in PowerShell)
 
-#### YOLO11n & YOLO26n (Ultralytics)
-```bash
+> [!NOTE]
+> **Windows cuBLAS Precision Note:** On Windows with PyTorch 2.6.0 and Ada Lovelace GPUs (RTX 4060 Laptop), cuBLAS encounters an internal error (`CUBLAS_STATUS_INTERNAL_ERROR`) in FP16 batched matrix multiplication (`cublasGemmStridedBatchedEx`). Training runs in FP32 (`amp=False`), which is numerically identical, stable, and uses only ~1.5 GB of the 8 GB VRAM budget at batch size 16.
+
+#### 1. Automated PowerShell Training Sequence Runner
+The recommended entry point is the automated PowerShell runner:
+```powershell
+# Dry-run validation of environment, splits, manifests, and configs
+.\scripts\run_training_sequence.ps1 -Detector yolo11n -DryRun
+
+# Run full YOLO11n sweep across all 5 ratio splits (0%, 20%, 40%, 60%, 80%)
+.\scripts\run_training_sequence.ps1 -Detector yolo11n
+
+# Run full YOLO26n sweep across all 5 ratio splits
+.\scripts\run_training_sequence.ps1 -Detector yolo26n
+
+# Run D-FINE-N sweep
+.\scripts\run_training_sequence.ps1 -Detector dfine
+
+# Run single split smoke test (e.g., 0% negative baseline, 1 epoch)
+.\scripts\run_training_sequence.ps1 -Detector yolo11n -Splits "00" -Epochs 1
+```
+
+#### 2. Individual Split CLI Commands (PowerShell Syntax)
+
+```powershell
 # YOLO11n Example (20% negative split)
-yolo detect train \
-  data=configs/yolo/yolo_20_low_neg.yaml \
-  model=yolo11n.pt \
-  epochs=100 \
-  batch=16 \
-  imgsz=640 \
-  amp=True \
-  seed=42 \
-  close_mosaic=10 \
-  weight_decay=0.0005 \
-  optimizer=auto \
+yolo detect train `
+  data=configs/yolo/yolo_20_low_neg.yaml `
+  model=yolo11n.pt `
+  epochs=100 `
+  batch=16 `
+  imgsz=640 `
+  amp=False `
+  seed=42 `
+  close_mosaic=10 `
+  weight_decay=0.0005 `
+  optimizer=auto `
   device=0
 
 # YOLO26n Example (20% negative split)
-yolo detect train \
-  data=configs/yolo/yolo_20_low_neg.yaml \
-  model=yolo26n.pt \
-  epochs=100 \
-  batch=16 \
-  imgsz=640 \
-  amp=True \
-  seed=42 \
-  close_mosaic=10 \
-  weight_decay=0.0005 \
-  optimizer=auto \
+yolo detect train `
+  data=configs/yolo/yolo_20_low_neg.yaml `
+  model=yolo26n.pt `
+  epochs=100 `
+  batch=16 `
+  imgsz=640 `
+  amp=False `
+  seed=42 `
+  close_mosaic=10 `
+  weight_decay=0.0005 `
+  optimizer=auto `
   device=0
+
+# D-FINE-N Example (20% negative split: Physical batch 4, grad accum 8 -> effective batch 32)
+python DFINE/train.py `
+  -c configs/dfine/dfine_20_low_neg.yml `
+  --seed 42
 ```
 
-#### D-FINE-N
-```bash
-# D-FINE-N Example (20% negative split: Physical batch 4, grad accum 8 -> effective batch 32)
-python train.py \
-  --config configs/dfine/dfine_20_low_neg.yml \
-  --epochs 160 \
-  --batch-size 4 \
-  --accum-steps 8 \
-  --amp \
-  --seed 42 \
-  --lr 0.0008 \
-  --lr-backbone 0.0004 \
-  --weight-decay 0.0001
-```
