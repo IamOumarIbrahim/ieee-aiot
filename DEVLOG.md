@@ -14,6 +14,7 @@ Formalized and froze the detector training protocol across YOLO11n, YOLO26n, and
 * Configured physical batch size 16 for YOLO11n and YOLO26n, and physical batch size 4 with 8-step gradient accumulation for D-FINE-N (effective batch size 32), documented explicitly as a hardware adaptation rather than an official native batch configuration.
 * Locked training budgets and augmentation cooldowns: 100 epochs with `close_mosaic=10` for YOLO models; 160 epochs with `stop_epoch=148` for D-FINE-N.
 * Retained official unscaled learning rates for D-FINE-N (0.0004 backbone, 0.0008 head/transformer, 0.0001 weight decay, 0.9999 EMA restart decay). Retained Ultralytics optimizer `auto` selection with 0.0005 weight decay.
+* Generated complete suite of D-FINE-N configurations in `configs/dfine/` (`dfine_hgnetv2_n_coco.yml` and ratio-specific configs `dfine_00_pos_only.yml` through `dfine_80_max_neg.yml`), validated paths to `data/processed/RGB/coco/dfine/`, and integrated automated D-FINE YAML parsing into `src/data/verify_splits.py`.
 
 #### 2. Protocol Guardrails & Methodological Alignment
 * **Single fixed random seed:** Confirmed single-seed evaluation (`seed=42`) without multi-seed averaging (no 13/37/73 seeds) to respect compute budgets while ensuring zero cross-ratio confounding.

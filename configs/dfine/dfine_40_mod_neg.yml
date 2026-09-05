@@ -1,0 +1,134 @@
+# D-FINE-N Configuration: 40% Negative Frames (Moderate-Negative)
+# Architecture: D-FINE-N (Nano variant, HGNetv2-B0 backbone)
+# Dataset: 2,401 positive frames, 1,600 negative frames (4,001 total, 39.99% negative)
+# Target Hardware: RTX 4060 (8 GB VRAM) Hardware Adaptation Protocol
+
+task: detection
+
+evaluator:
+  type: CocoEvaluator
+  iou_types: ['bbox']
+
+num_classes: 4
+remap_mscoco_category: False
+
+names: ['yawning', 'hand_over_mouth', 'drinking', 'phone_use']
+
+train_dataloader:
+  type: DataLoader
+  dataset:
+    type: CocoDetection
+    img_folder: data/processed/RGB/
+    ann_file: data/processed/RGB/coco/dfine/instances_train_40_mod_neg.json
+    return_masks: False
+    transforms:
+      ops:
+        - {type: RandomPhotometricDistort, p: 0.5}
+        - {type: RandomZoomOut, fill: 0}
+        - {type: RandomIoUCrop, p: 0.8}
+        - {type: SanitizeBoundingBoxes, min_size: 1}
+        - {type: RandomHorizontalFlip}
+        - {type: Resize, size: [640, 640]}
+        - {type: SanitizeBoundingBoxes, min_size: 1}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+        - {type: ConvertBoxes, fmt: 'cxcywh', normalize: True}
+  shuffle: True
+  batch_size: 4
+  num_workers: 4
+  drop_last: True
+  collate_fn:
+    type: BatchImageCollateFuncion
+    stop_epoch: 148
+
+val_dataloader:
+  type: DataLoader
+  dataset:
+    type: CocoDetection
+    img_folder: data/processed/RGB/
+    ann_file: data/processed/RGB/coco/dfine/instances_val.json
+    return_masks: False
+    transforms:
+      ops:
+        - {type: Resize, size: [640, 640]}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+  shuffle: False
+  batch_size: 8
+  num_workers: 4
+  drop_last: False
+  collate_fn:
+    type: BatchImageCollateFuncion
+
+test_dataloader:
+  type: DataLoader
+  dataset:
+    type: CocoDetection
+    img_folder: data/processed/RGB/
+    ann_file: data/processed/RGB/coco/dfine/instances_test.json
+    return_masks: False
+    transforms:
+      ops:
+        - {type: Resize, size: [640, 640]}
+        - {type: ConvertPILImage, dtype: 'float32', scale: True}
+  shuffle: False
+  batch_size: 8
+  num_workers: 4
+  drop_last: False
+  collate_fn:
+    type: BatchImageCollateFuncion
+
+DFINE:
+  backbone: HGNetv2
+
+HGNetv2:
+  name: 'B0'
+  return_idx: [2, 3]
+  freeze_at: -1
+  freeze_norm: False
+  use_lab: True
+
+HybridEncoder:
+  in_channels: [512, 1024]
+  feat_strides: [16, 32]
+  hidden_dim: 128
+  use_encoder_idx: [1]
+  dim_feedforward: 512
+  expansion: 0.34
+  depth_mult: 0.5
+
+DFINETransformer:
+  feat_channels: [128, 128]
+  feat_strides: [16, 32]
+  hidden_dim: 128
+  dim_feedforward: 512
+  num_levels: 2
+  num_layers: 3
+  eval_idx: -1
+  num_queries: 300
+  reg_scale: 4
+  dec_layer_number: 3
+
+epochs: 160
+epoches: 160
+clip_max_norm: 0.1
+use_amp: True
+seed: 42
+batch_size: 4
+accumulate_steps: 8
+
+optimizer:
+  type: AdamW
+  lr: 0.0008
+  weight_decay: 0.0001
+  params:
+    - params: '^(?=.*backbone)(?!.*norm).*$'
+      lr: 0.0004
+    - params: '^(?=.*(?:encoder|decoder))(?=.*(?:norm|bn)).*$'
+      weight_decay: 0.0
+
+ema:
+  type: ModelEMA
+  decay: 0.9999
+  warmups: 1000
+  start: 0
+
+output_dir: ./output/dfine_40_mod_neg

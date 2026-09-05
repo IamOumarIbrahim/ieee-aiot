@@ -99,7 +99,7 @@ def main():
         test_pos.extend(test_chunk)
         val_pos.extend(val_chunk)
         train_pos.extend(train_chunk)
-        print(f"Category {cat_id} ({len(cat_imgs)}): train={len(train_chunk)}, val={len(test_chunk)}, test={len(val_chunk)}")
+        print(f"Category {cat_id} ({len(cat_imgs)}): train={len(train_chunk)}, val={len(val_chunk)}, test={len(test_chunk)}")
 
     print(f"Total stratified positives -> Train: {len(train_pos)}, Val: {len(val_pos)}, Test: {len(test_pos)}")
     assert len(train_pos) == 2401, f"Expected 2401 train pos, got {len(train_pos)}"

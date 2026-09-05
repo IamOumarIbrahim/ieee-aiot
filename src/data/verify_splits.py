@@ -97,6 +97,28 @@ def main():
         assert "train" in data_dict and "val" in data_dict and "test" in data_dict
         print(f"  [OK] {yml} successfully parsed by Ultralytics")
 
+    print("\n=== 6. D-FINE YAML CONFIG VERIFICATION ===")
+    dfine_configs_dir = repo_root / "configs" / "dfine"
+    dfine_ymls = [
+        "dfine_hgnetv2_n_coco.yml",
+        "dfine_00_pos_only.yml",
+        "dfine_20_low_neg.yml",
+        "dfine_40_mod_neg.yml",
+        "dfine_60_high_neg.yml",
+        "dfine_80_max_neg.yml"
+    ]
+    for yml in dfine_ymls:
+        yml_path = dfine_configs_dir / yml
+        assert yml_path.exists(), f"Missing D-FINE config: {yml_path}"
+        with open(yml_path, "r") as f:
+            d = yaml.safe_load(f)
+        assert d["num_classes"] == 4, f"{yml}: expected 4 classes, got {d.get('num_classes')}"
+        ann_path = repo_root / d["train_dataloader"]["dataset"]["ann_file"]
+        img_path = repo_root / d["train_dataloader"]["dataset"]["img_folder"]
+        assert ann_path.exists(), f"Missing annotation file: {ann_path}"
+        assert img_path.exists(), f"Missing image folder: {img_path}"
+        print(f"  [OK] {yml} parsed & verified")
+
     print("\nALL VERIFICATIONS PASSED! Directory and configurations are 100% ready for training.")
 
 if __name__ == "__main__":

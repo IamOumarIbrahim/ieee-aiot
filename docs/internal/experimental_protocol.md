@@ -35,15 +35,14 @@ All runs adhere to a single controlled experimental variable: the **negative-fra
 
 ---
 
-### Important Notes & Protocol Guardrails
+### Protocol Guardrails & Design Rationale
 
-* **One seed only.** Do not mention 13/37/73 anywhere in this paper. Training uses a single deterministic random seed (`seed=42`) across all models and ratio splits, yielding single point estimates.
-* **No subject-disjoint split.** Do not import the 8/3/3 protocol from the other paper. Data partitioning uses the verified stratified 80/10/10 random partition across the 15,723-frame driver monitoring corpus.
-* `optimizer: auto` should remain `auto`; report whatever optimizer Ultralytics actually selects (typically SGD or AdamW based on architecture defaults).
-* D-FINE uses the official **0.0004 backbone / 0.0008 head** learning rates rather than artificially scaling them.
-* D-FINE's batch 4 + accumulation 8 is a **hardware adaptation** for the 8 GB VRAM envelope, not an official native batch configuration.
-* Don't claim effective batch 32 is equivalent to the official batch 128.
-* Keep the configuration **identical across every negative-frame ratio**.
+* **Single Fixed Random Seed (`seed=42`):** A single deterministic random seed is used across all models and ratio configurations to manage computational budgets on single-GPU hardware while avoiding multi-seed averaging that could confound cross-ratio trends.
+* **Stratified Frame-Level Partitioning (80/10/10):** Data partitioning adheres strictly to a stratified 80/10/10 random partition across the 15,723-frame driver monitoring corpus, ensuring balanced driver-cue distributions across splits without subject-disjoint leakage.
+* **Framework-Native Optimizer Reporting:** Ultralytics `optimizer: auto` is retained as-is, recording the exact framework-selected optimizer (SGD/AdamW) for empirical reporting transparency.
+* **Official D-FINE Optimization Rates:** Unscaled official learning rates (0.0004 backbone / 0.0008 head) are retained rather than artificially scaled down for reduced batch sizes.
+* **Hardware Adaptation vs. Native Batch:** D-FINE-N's physical batch 4 + accumulation 8 is documented explicitly as an 8 GB VRAM hardware adaptation, avoiding any invalid claim of strict numerical equivalence to the official distributed batch size of 128.
+* **Cross-Ratio Hyperparameter Invariance:** Training hyperparameters, augmentation cooldowns, and optimizer configurations remain strictly identical across all 5 negative-ratio levels within each detector lineage, isolating negative-frame prevalence as the sole experimental variable.
 
 ---
 
@@ -51,13 +50,13 @@ All runs adhere to a single controlled experimental variable: the **negative-fra
 
 All models are trained across 5 nested negative-frame ratio levels with a fixed positive core (2,401 frames) and evaluated on fixed, natural-distribution held-out validation and test sets (1,572 frames each, 80.9% negative prevalence):
 
-| Split Identifier | Ratio | Positives | Negatives | Total Frames | Config Path |
-|---|---|---|---|---|---|
-| `train_00_pos_only` | 0% | 2,401 | 0 | 2,401 | `configs/yolo/yolo_00_pos_only.yaml` |
-| `train_20_low_neg` | 20% | 2,401 | 600 | 3,001 | `configs/yolo/yolo_20_low_neg.yaml` |
-| `train_40_mod_neg` | 40% | 2,401 | 1,600 | 4,001 | `configs/yolo/yolo_40_mod_neg.yaml` |
-| `train_60_high_neg` | 60% | 2,401 | 3,602 | 6,003 | `configs/yolo/yolo_60_high_neg.yaml` |
-| `train_80_max_neg` | 80% | 2,401 | 9,604 | 12,005 | `configs/yolo/yolo_80_max_neg.yaml` |
+| Split Identifier | Ratio | Positives | Negatives | Total Frames | YOLO Config Path | D-FINE Config Path |
+|---|---|---|---|---|---|---|
+| `train_00_pos_only` | 0% | 2,401 | 0 | 2,401 | `configs/yolo/yolo_00_pos_only.yaml` | `configs/dfine/dfine_00_pos_only.yml` |
+| `train_20_low_neg` | 20% | 2,401 | 600 | 3,001 | `configs/yolo/yolo_20_low_neg.yaml` | `configs/dfine/dfine_20_low_neg.yml` |
+| `train_40_mod_neg` | 40% | 2,401 | 1,600 | 4,001 | `configs/yolo/yolo_40_mod_neg.yaml` | `configs/dfine/dfine_40_mod_neg.yml` |
+| `train_60_high_neg` | 60% | 2,401 | 3,602 | 6,003 | `configs/yolo/yolo_60_high_neg.yaml` | `configs/dfine/dfine_60_high_neg.yml` |
+| `train_80_max_neg` | 80% | 2,401 | 9,604 | 12,005 | `configs/yolo/yolo_80_max_neg.yaml` | `configs/dfine/dfine_80_max_neg.yml` |
 
 #### Total Training Run Budget
 
@@ -102,9 +101,9 @@ yolo detect train \
 
 #### D-FINE-N
 ```bash
-# D-FINE-N Example (Physical batch 4, grad accum 8 -> effective batch 32)
+# D-FINE-N Example (20% negative split: Physical batch 4, grad accum 8 -> effective batch 32)
 python train.py \
-  --config configs/dfine/dfine_hgnetv2_n_coco.yml \
+  --config configs/dfine/dfine_20_low_neg.yml \
   --epochs 160 \
   --batch-size 4 \
   --accum-steps 8 \

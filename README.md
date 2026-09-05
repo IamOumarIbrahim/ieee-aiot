@@ -7,7 +7,7 @@
 </p>
 
 <p align="center">
-  <a href="https://raw.githubusercontent.com/IamOumarIbrahim/ieee-aiot/main/docs/manuscript/main.pdf" download="main.pdf"><img src="https://img.shields.io/badge/📄_Manuscript-Download_PDF-e02424?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="Download the manuscript PDF"></a>
+  <img src="https://img.shields.io/badge/📄_Manuscript-In_Preparation-yellow?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="Manuscript In Preparation">
 </p>
 
 ## Table of Contents
@@ -67,7 +67,7 @@ RQ2 (Curation Quality):
 
 - [x] **Dataset Curation & Splits:** Unified 80/10/10 stratified partition generated (`seed=42`).
 - [x] **Negative Ratio Configurations:** 5 nested training configurations prepared (0%, 20%, 40%, 60%, 80%).
-- [x] **Manifests & Configs:** YOLO text manifests, COCO JSONs, and Ultralytics dataset YAMLs verified.
+- [x] **Manifests & Configs:** YOLO text manifests, COCO JSONs, Ultralytics dataset YAMLs, and D-FINE YAMLs verified.
 - [ ] **Detector Training:** YOLO11n, YOLO26n, and D-FINE-N ratio sweep runs.
 - [ ] **Hard-Negative Mining (RQ2):** Best-ratio curation benchmark.
 - [ ] **Inference & Profiling:** FP/1k frames and edge deployment cost analysis.
@@ -98,6 +98,7 @@ yolo detect train data=configs/yolo/yolo_20_low_neg.yaml model=yolo11n.pt epochs
 
 ```text
 ├── configs/
+│   ├── dfine/             # D-FINE dataset and model configs for each ratio split
 │   └── yolo/              # Ultralytics dataset configs for each ratio split
 ├── data/
 │   ├── annotations/       # Master annotations (15,723 frames)
