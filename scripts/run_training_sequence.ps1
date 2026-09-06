@@ -57,6 +57,8 @@ param(
 
     [switch]$Amp,
 
+    [switch]$EvalOnly,
+
     [switch]$SkipVerification
 )
 
@@ -146,6 +148,10 @@ foreach ($Det in $DetectorsToRun) {
 
         if ($Amp) {
             $YoloArgs += "--amp"
+        }
+
+        if ($EvalOnly) {
+            $YoloArgs += "--eval-only"
         }
 
         Write-Host "  Command: python $($YoloArgs -join ' ')" -ForegroundColor Gray

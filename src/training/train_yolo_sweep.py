@@ -39,48 +39,49 @@ def parse_args():
     parser.add_argument("--weight-decay", type=float, default=0.0005, help="Weight decay (frozen: 0.0005)")
     parser.add_argument("--splits", type=str, default="00,20,40,60", help="Comma-separated split keys (e.g., '00,20,40,60' or 'all')")
     parser.add_argument("--amp", action="store_true", default=False, help="Enable PyTorch AMP mixed precision (default: False for Windows cuBLAS stability)")
+    parser.add_argument("--eval-only", action="store_true", help="Run evaluation on existing checkpoints without retraining")
     parser.add_argument("--dry-run", action="store_true", help="Validate configurations without initiating training")
     return parser.parse_args()
 
-def calculate_fp_per_1k(model, test_manifest_path, conf_thresh=0.25):
+def calculate_fp_per_1k(model, manifest_path, split_name="test", conf_thresh=0.25, device="0"):
     """
-    Evaluates detector false-positive predictions on background-only negative test frames.
-    Returns: false positives per 1,000 frames on the negative benchmark test set.
+    Evaluates detector false-positive predictions on background-only negative frames.
+    Returns: false positives per 1,000 frames on the negative benchmark split.
     """
-    manifest_file = Path(test_manifest_path).resolve()
+    manifest_file = Path(manifest_path).resolve()
     manifest_dir = manifest_file.parent
 
     with open(manifest_file, "r") as f:
-        all_test_paths = [l.strip() for l in f if l.strip()]
+        all_paths = [l.strip() for l in f if l.strip()]
 
-    # Load annotations to identify background-only frames in the test set
-    val_test_dir = manifest_dir.parent / "coco"
-    with open(val_test_dir / "instances_test.json", "r") as f:
-        test_coco = json.load(f)
+    # Load annotations to identify background-only frames in the split
+    coco_dir = manifest_dir.parent / "coco"
+    coco_file = coco_dir / f"instances_{split_name}.json"
+    with open(coco_file, "r") as f:
+        coco_data = json.load(f)
 
-    pos_img_ids = {ann["image_id"] for ann in test_coco["annotations"]}
-    neg_img_filenames = {img["file_name"] for img in test_coco["images"] if img["id"] not in pos_img_ids}
+    pos_img_ids = {ann["image_id"] for ann in coco_data["annotations"]}
+    neg_img_filenames = {img["file_name"] for img in coco_data["images"] if img["id"] not in pos_img_ids}
 
-    neg_test_paths = []
-    for p in all_test_paths:
+    neg_paths = []
+    for p in all_paths:
         # Standardize matching
         fn = p.replace("./../", "")
         if fn in neg_img_filenames or fn.replace("images/", "") in {f.replace("images/", "") for f in neg_img_filenames}:
-            # Resolve relative manifest path against the manifest's parent directory to avoid CWD resolution errors
             resolved_p = (manifest_dir / p).resolve()
-            neg_test_paths.append(str(resolved_p))
+            neg_paths.append(str(resolved_p))
 
-    total_neg_frames = len(neg_test_paths)
-    assert total_neg_frames == 1272, f"Expected 1272 negative test frames, got {total_neg_frames}"
+    total_neg_frames = len(neg_paths)
+    assert total_neg_frames == 1272, f"Expected 1272 negative frames for {split_name}, got {total_neg_frames}"
     if total_neg_frames == 0:
         return 0.0, 0, 0
 
-    # Run inference on negative test frames in batches to avoid VRAM spikes on 8GB GPUs
+    # Run inference on negative frames in batches to avoid VRAM spikes on 8GB GPUs
     fp_count = 0
     batch_size = 32
     for i in range(0, total_neg_frames, batch_size):
-        batch = neg_test_paths[i : i + batch_size]
-        results = model.predict(batch, conf=conf_thresh, verbose=False)
+        batch = neg_paths[i : i + batch_size]
+        results = model.predict(batch, conf=conf_thresh, device=device, verbose=False)
         for r in results:
             fp_count += len(r.boxes)
         del results
@@ -90,6 +91,68 @@ def calculate_fp_per_1k(model, test_manifest_path, conf_thresh=0.25):
 
     fp_per_1k = (fp_count / total_neg_frames) * 1000.0
     return fp_per_1k, fp_count, total_neg_frames
+
+def evaluate_split(model, cfg_path, manifest_path, split_name, imgsz=640, device="0", conf_thresh=0.25):
+    """
+    Evaluates detector on a full split (mAP, P, R) and computes FP/1k on negative frames.
+    """
+    print(f"  Evaluating split '{split_name}' (mAP / Precision / Recall)...")
+    metrics = model.val(data=cfg_path, split=split_name, imgsz=imgsz, device=device, plots=False, save=False, verbose=False)
+
+    p = float(metrics.box.mp)
+    r = float(metrics.box.mr)
+    map50 = float(metrics.box.map50)
+    map50_95 = float(metrics.box.map)
+
+    print(f"  Calculating false-positive rate on negative {split_name} frames (conf={conf_thresh})...")
+    fp_per_1k, fp_count, total_negs = calculate_fp_per_1k(model, manifest_path, split_name=split_name, conf_thresh=conf_thresh, device=device)
+
+    # Extract per-class APs
+    per_class = {}
+    class_names = getattr(model, "names", {0: "yawning", 1: "hand_over_mouth", 2: "drinking", 3: "phone_use"})
+    if hasattr(metrics.box, "ap50") and hasattr(metrics.box, "ap"):
+        for cls_idx, cls_name in class_names.items():
+            if cls_idx < len(metrics.box.ap50):
+                per_class[cls_name] = {
+                    "map50": round(float(metrics.box.ap50[cls_idx]), 4),
+                    "map50_95": round(float(metrics.box.ap[cls_idx]), 4),
+                }
+
+    return {
+        "precision": round(p, 4),
+        "recall": round(r, 4),
+        "map50": round(map50, 4),
+        "map50_95": round(map50_95, 4),
+        "fp_per_1k": round(fp_per_1k, 2),
+        "total_fps": fp_count,
+        "neg_frames": total_negs,
+        "per_class": per_class,
+    }
+
+def save_summary_outputs(summary, project_dir, model_stem):
+    """Helper to save summary JSON and formatted Markdown report."""
+    summary_file = project_dir / f"{model_stem}_sweep_summary.json"
+    with open(summary_file, "w") as f:
+        json.dump(summary, f, indent=2)
+
+    md_file = project_dir / f"{model_stem}_sweep_summary.md"
+    with open(md_file, "w") as f:
+        f.write(f"# Evaluation Summary: {summary['model']}\n\n")
+        f.write(f"- **Timestamp:** {summary['timestamp']}\n")
+        proto = summary.get("protocol", {})
+        f.write(f"- **Protocol:** epochs={proto.get('epochs')}, batch={proto.get('batch')}, imgsz={proto.get('imgsz')}, seed={proto.get('seed')}\n\n")
+        f.write("### Validation & Test Split Performance\n\n")
+        f.write("| Split | Ratio | Val mAP50 | Val mAP50:95 | Val FP/1k | Test mAP50 | Test mAP50:95 | Test FP/1k | Train Time (min) |\n")
+        f.write("|---|---|---|---|---|---|---|---|---|\n")
+        for r in summary["runs"]:
+            tt = f"{r['train_time_minutes']:.1f}" if r.get('train_time_minutes') is not None else "N/A"
+            v_m50 = f"{r['val_map50']:.4f}" if "val_map50" in r else "N/A"
+            v_m = f"{r['val_map50_95']:.4f}" if "val_map50_95" in r else "N/A"
+            v_fp = f"{r['val_fp_per_1k']:.2f}" if "val_fp_per_1k" in r else "N/A"
+            t_m50 = f"{r['test_map50']:.4f}" if "test_map50" in r else "N/A"
+            t_m = f"{r['test_map50_95']:.4f}" if "test_map50_95" in r else "N/A"
+            t_fp = f"{r['test_fp_per_1k']:.2f}" if "test_fp_per_1k" in r else "N/A"
+            f.write(f"| `{r['split']}` | {r['ratio']} | {v_m50} | {v_m} | {v_fp} | {t_m50} | {t_m} | {t_fp} | {tt} |\n")
 
 def main():
     args = parse_args()
@@ -103,29 +166,42 @@ def main():
         filter_keys = [k.strip() for k in args.splits.split(",")]
         selected_splits = [s for s in SPLITS if any(k in s["name"] for k in filter_keys)]
 
+    mode_label = "Evaluation Only (--eval-only)" if args.eval_only else "Training & Evaluation Sweep"
     print(f"============================================================")
-    print(f"  Starting YOLO Ratio Sweep: {args.model}")
+    print(f"  Starting YOLO Runner: {args.model}")
+    print(f"  Mode: {mode_label}")
     print(f"  Target Splits: {[s['name'] for s in selected_splits]}")
-    print(f"  Frozen Hyperparameters: epochs={args.epochs}, batch={args.batch}, imgsz={args.imgsz}, seed={args.seed}")
+    print(f"  Configuration: epochs={args.epochs}, batch={args.batch}, imgsz={args.imgsz}, seed={args.seed}, device={args.device}")
     print(f"  Output Directory: {project_dir}")
     print(f"============================================================\n")
+
+    val_manifest = repo_root / "data" / "processed" / "RGB" / "yolo" / "val.txt"
+    test_manifest = repo_root / "data" / "processed" / "RGB" / "yolo" / "test.txt"
 
     if args.dry_run:
         print("[DRY-RUN] Validating dataset configuration paths:")
         for s in selected_splits:
             cfg_path = repo_root / s["config"]
-            print(f"  - {s['name']}: {cfg_path.exists()} ({cfg_path})")
-        test_manifest = repo_root / "data" / "processed" / "RGB" / "yolo" / "test.txt"
+            ckpt_path = project_dir / s["name"] / "weights" / "best.pt"
+            print(f"  - {s['name']}: config={cfg_path.exists()} ({cfg_path}), checkpoint={ckpt_path.exists()} ({ckpt_path})")
+        print(f"  - val_manifest exists: {val_manifest.exists()} ({val_manifest})")
         print(f"  - test_manifest exists: {test_manifest.exists()} ({test_manifest})")
-        if test_manifest.exists():
-            val_test_dir = test_manifest.parent.parent / "coco"
-            instances_test = val_test_dir / "instances_test.json"
-            print(f"  - coco instances_test exists: {instances_test.exists()} ({instances_test})")
         print("\nAll configurations validated successfully. Exiting dry run.")
         return
 
+    # Load existing summary to retain training metadata if available
+    summary_file = project_dir / f"{model_stem}_sweep_summary.json"
+    existing_runs = {}
+    if summary_file.exists():
+        try:
+            with open(summary_file, "r") as f:
+                existing_data = json.load(f)
+                existing_runs = {r["split"]: r for r in existing_data.get("runs", [])}
+        except Exception as e:
+            print(f"Warning: Could not parse existing summary: {e}")
+
     summary = {
-        "model": args.model,
+        "model": str(args.model),
         "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
         "protocol": {
             "epochs": args.epochs,
@@ -140,99 +216,158 @@ def main():
         "runs": []
     }
 
-    test_manifest = repo_root / "data" / "processed" / "RGB" / "yolo" / "test.txt"
-
     for idx, s in enumerate(selected_splits, 1):
         split_name = s["name"]
         ratio_label = s["ratio"]
         cfg_path = str(repo_root / s["config"])
 
-        print(f"\n[{idx}/{len(selected_splits)}] Launching Run: {split_name} ({ratio_label} Negatives)")
-        start_time = time.time()
+        if args.eval_only:
+            ckpt_path = project_dir / split_name / "weights" / "best.pt"
+            if not ckpt_path.exists():
+                print(f"\n[{idx}/{len(selected_splits)}] [WARN] Checkpoint not found: {ckpt_path}. Skipping.")
+                continue
 
-        # Initialize fresh model from pretrained weights
-        model = YOLO(args.model)
+            print(f"\n[{idx}/{len(selected_splits)}] Evaluating Checkpoint: {ckpt_path} ({split_name}, {ratio_label} Negatives)")
+            model = YOLO(str(ckpt_path))
 
-        # Execute training adhering strictly to frozen protocol
-        model.train(
-            data=cfg_path,
-            epochs=args.epochs,
-            batch=args.batch,
-            imgsz=args.imgsz,
-            seed=args.seed,
-            amp=args.amp,
-            close_mosaic=args.close_mosaic,
-            optimizer="auto",
-            weight_decay=args.weight_decay,
-            project=str(project_dir),
-            name=split_name,
-            device=args.device,
-            exist_ok=True,
-            verbose=True
-        )
+            # Prior train time if recorded
+            train_time = existing_runs.get(split_name, {}).get("train_time_minutes", None)
 
-        elapsed_min = (time.time() - start_time) / 60.0
+            # Evaluate on validation split
+            val_res = evaluate_split(model, cfg_path, val_manifest, split_name="val", imgsz=args.imgsz, device=args.device)
 
-        # Evaluate on the held-out test benchmark
-        print(f"  Evaluating {split_name} on held-out test split...")
-        test_metrics = model.val(data=cfg_path, split="test", imgsz=args.imgsz, device=args.device, verbose=False)
+            # Evaluate on held-out test split
+            test_res = evaluate_split(model, cfg_path, test_manifest, split_name="test", imgsz=args.imgsz, device=args.device)
 
-        precision = float(test_metrics.box.mp)
-        recall = float(test_metrics.box.mr)
-        map50 = float(test_metrics.box.map50)
-        map50_95 = float(test_metrics.box.map)
+            run_result = {
+                "split": split_name,
+                "ratio": ratio_label,
+                "train_time_minutes": train_time,
+                # Validation metrics
+                "val_precision": val_res["precision"],
+                "val_recall": val_res["recall"],
+                "val_map50": val_res["map50"],
+                "val_map50_95": val_res["map50_95"],
+                "val_fp_per_1k": val_res["fp_per_1k"],
+                "val_total_fps": val_res["total_fps"],
+                # Test metrics
+                "test_precision": test_res["precision"],
+                "test_recall": test_res["recall"],
+                "test_map50": test_res["map50"],
+                "test_map50_95": test_res["map50_95"],
+                "test_fp_per_1k": test_res["fp_per_1k"],
+                "total_test_fps": test_res["total_fps"],
+                "test_neg_frames": test_res["neg_frames"],
+                "per_class": {
+                    "val": val_res["per_class"],
+                    "test": test_res["per_class"],
+                }
+            }
 
-        # Compute FP/1k frames on negative test frames
-        print(f"  Calculating false-positive rate on negative test frames (conf=0.25)...")
-        fp_per_1k, total_fp, test_negs = calculate_fp_per_1k(model, test_manifest, conf_thresh=0.25)
+            summary["runs"].append(run_result)
+            print(f"  Val  -> mAP@50: {val_res['map50']:.4f}, mAP@50-95: {val_res['map50_95']:.4f}, FP/1k: {val_res['fp_per_1k']:.2f}")
+            print(f"  Test -> mAP@50: {test_res['map50']:.4f}, mAP@50-95: {test_res['map50_95']:.4f}, FP/1k: {test_res['fp_per_1k']:.2f}")
 
-        run_result = {
-            "split": split_name,
-            "ratio": ratio_label,
-            "train_time_minutes": round(elapsed_min, 2),
-            "test_precision": round(precision, 4),
-            "test_recall": round(recall, 4),
-            "test_map50": round(map50, 4),
-            "test_map50_95": round(map50_95, 4),
-            "test_fp_per_1k": round(fp_per_1k, 2),
-            "total_test_fps": total_fp,
-            "test_neg_frames": test_negs
-        }
+            del model
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
 
-        summary["runs"].append(run_result)
-        print(f"  Completed {split_name} in {elapsed_min:.1f}m -> mAP@50: {map50:.4f}, FP/1k: {fp_per_1k:.2f}")
+            save_summary_outputs(summary, project_dir, model_stem)
 
-        # Clean up GPU memory for next split
-        del model
-        gc.collect()
-        if torch.cuda.is_available():
-            torch.cuda.empty_cache()
+        else:
+            print(f"\n[{idx}/{len(selected_splits)}] Launching Run: {split_name} ({ratio_label} Negatives)")
+            start_time = time.time()
 
-        # Save interim summary after each run (JSON and Markdown)
-        summary_file = project_dir / f"{model_stem}_sweep_summary.json"
-        with open(summary_file, "w") as f:
-            json.dump(summary, f, indent=2)
+            # Initialize fresh model from pretrained weights
+            model = YOLO(args.model)
 
-        md_file = project_dir / f"{model_stem}_sweep_summary.md"
-        with open(md_file, "w") as f:
-            f.write(f"# Sweep Summary: {args.model}\n\n")
-            f.write(f"- **Timestamp:** {summary['timestamp']}\n")
-            f.write(f"- **Protocol:** epochs={args.epochs}, batch={args.batch}, imgsz={args.imgsz}, seed={args.seed}\n\n")
-            f.write("| Split | Ratio | mAP@50 | mAP@50:95 | Precision | Recall | FP/1k | Train Time (min) |\n")
-            f.write("|---|---|---|---|---|---|---|---|\n")
-            for r in summary["runs"]:
-                f.write(f"| `{r['split']}` | {r['ratio']} | {r['test_map50']:.4f} | {r['test_map50_95']:.4f} | {r['test_precision']:.4f} | {r['test_recall']:.4f} | {r['test_fp_per_1k']:.2f} | {r['train_time_minutes']:.1f} |\n")
+            # Execute training adhering strictly to frozen protocol
+            model.train(
+                data=cfg_path,
+                epochs=args.epochs,
+                batch=args.batch,
+                imgsz=args.imgsz,
+                seed=args.seed,
+                amp=args.amp,
+                close_mosaic=args.close_mosaic,
+                optimizer="auto",
+                weight_decay=args.weight_decay,
+                project=str(project_dir),
+                name=split_name,
+                device=args.device,
+                exist_ok=True,
+                verbose=True
+            )
 
-    # Print summary table
-    print("\n" + "="*80)
+            elapsed_min = (time.time() - start_time) / 60.0
+
+            # Reload best checkpoint for definitive evaluation
+            best_ckpt = project_dir / split_name / "weights" / "best.pt"
+            eval_model = YOLO(str(best_ckpt)) if best_ckpt.exists() else model
+
+            # Evaluate on validation split
+            val_res = evaluate_split(eval_model, cfg_path, val_manifest, split_name="val", imgsz=args.imgsz, device=args.device)
+
+            # Evaluate on held-out test split
+            test_res = evaluate_split(eval_model, cfg_path, test_manifest, split_name="test", imgsz=args.imgsz, device=args.device)
+
+            run_result = {
+                "split": split_name,
+                "ratio": ratio_label,
+                "train_time_minutes": round(elapsed_min, 2),
+                # Validation metrics
+                "val_precision": val_res["precision"],
+                "val_recall": val_res["recall"],
+                "val_map50": val_res["map50"],
+                "val_map50_95": val_res["map50_95"],
+                "val_fp_per_1k": val_res["fp_per_1k"],
+                "val_total_fps": val_res["total_fps"],
+                # Test metrics
+                "test_precision": test_res["precision"],
+                "test_recall": test_res["recall"],
+                "test_map50": test_res["map50"],
+                "test_map50_95": test_res["map50_95"],
+                "test_fp_per_1k": test_res["fp_per_1k"],
+                "total_test_fps": test_res["total_fps"],
+                "test_neg_frames": test_res["neg_frames"],
+                "per_class": {
+                    "val": val_res["per_class"],
+                    "test": test_res["per_class"],
+                }
+            }
+
+            summary["runs"].append(run_result)
+            print(f"  Completed {split_name} in {elapsed_min:.1f}m:")
+            print(f"    Val  -> mAP@50: {val_res['map50']:.4f}, FP/1k: {val_res['fp_per_1k']:.2f}")
+            print(f"    Test -> mAP@50: {test_res['map50']:.4f}, FP/1k: {test_res['fp_per_1k']:.2f}")
+
+            del model
+            if eval_model is not model:
+                del eval_model
+            gc.collect()
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
+
+            save_summary_outputs(summary, project_dir, model_stem)
+
+    # Print consolidated summary table
+    print("\n" + "="*115)
     print(f"  SWEEP SUMMARY TABLE: {args.model}")
-    print("="*80)
-    print(f"{'Split':<20} | {'Ratio':<6} | {'mAP@50':<8} | {'mAP@50:95':<10} | {'Precision':<10} | {'Recall':<8} | {'FP/1k':<8} | {'Time (min)':<10}")
-    print("-" * 95)
+    print("="*115)
+    print(f"{'Split':<20} | {'Ratio':<6} | {'Val mAP50':<9} | {'Val FP/1k':<9} | {'Test mAP50':<10} | {'Test mAP':<8} | {'Test FP/1k':<10} | {'Time (min)':<10}")
+    print("-" * 115)
     for r in summary["runs"]:
-        print(f"{r['split']:<20} | {r['ratio']:<6} | {r['test_map50']:<8.4f} | {r['test_map50_95']:<10.4f} | {r['test_precision']:<10.4f} | {r['test_recall']:<8.4f} | {r['test_fp_per_1k']:<8.2f} | {r['train_time_minutes']:<10.1f}")
-    print("="*80)
+        tt = f"{r['train_time_minutes']:.1f}" if r.get('train_time_minutes') is not None else "N/A"
+        v_m50 = f"{r['val_map50']:.4f}" if "val_map50" in r else "N/A"
+        v_fp = f"{r['val_fp_per_1k']:.2f}" if "val_fp_per_1k" in r else "N/A"
+        t_m50 = f"{r['test_map50']:.4f}" if "test_map50" in r else "N/A"
+        t_m = f"{r['test_map50_95']:.4f}" if "test_map50_95" in r else "N/A"
+        t_fp = f"{r['test_fp_per_1k']:.2f}" if "test_fp_per_1k" in r else "N/A"
+        print(f"{r['split']:<20} | {r['ratio']:<6} | {v_m50:<9} | {v_fp:<9} | {t_m50:<10} | {t_m:<8} | {t_fp:<10} | {tt:<10}")
+    print("="*115)
     print(f"Summary persisted to:\n  - {project_dir / f'{model_stem}_sweep_summary.json'}\n  - {project_dir / f'{model_stem}_sweep_summary.md'}\n")
 
 if __name__ == "__main__":
     main()
+

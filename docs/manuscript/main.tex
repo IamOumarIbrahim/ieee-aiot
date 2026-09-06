@@ -590,31 +590,31 @@ set ($1{,}572$ frames, $80.9\%$ negative prevalence).
       \textbf{$\mathrm{FP/1k}$} \\
       \midrule
       \multirow{5}{*}{YOLO11n}
-        & 0\%  & --- & --- & --- & --- & --- \\
-        & 20\% & --- & --- & --- & --- & --- \\
-        & 40\% & --- & --- & --- & --- & --- \\
-        & 60\% & --- & --- & --- & --- & --- \\
-        & 80\% & --- & --- & --- & --- & --- \\
+        & 0\%  & 0.9769 & 0.7538 & 0.8806 & 0.9741 & 59.75 \\
+        & 20\% & 0.9878 & 0.7518 & 0.9202 & 0.9728 & 31.45 \\
+        & 40\% & \textbf{0.9932} & 0.7699 & \textbf{0.9376} & 0.9839 & 24.37 \\
+        & 60\% & 0.9881 & \textbf{0.7747} & 0.9248 & \textbf{0.9920} & \textbf{12.58} \\
+        & 80\% & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ \\
       \midrule
       \multirow{5}{*}{YOLO26n}
-        & 0\%  & --- & --- & --- & --- & --- \\
-        & 20\% & --- & --- & --- & --- & --- \\
-        & 40\% & --- & --- & --- & --- & --- \\
-        & 60\% & --- & --- & --- & --- & --- \\
-        & 80\% & --- & --- & --- & --- & --- \\
+        & 0\%  & 0.9176 & 0.7095 & 0.8649 & 0.8988 & 99.06 \\
+        & 20\% & 0.9744 & \textbf{0.7632} & 0.9390 & \textbf{0.9785} & 15.72 \\
+        & 40\% & \textbf{0.9830} & 0.7555 & 0.9411 & 0.9653 & \textbf{5.50} \\
+        & 60\% & 0.9660 & 0.7594 & \textbf{0.9587} & 0.9086 & 10.22 \\
+        & 80\% & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ \\
       \midrule
       \multirow{5}{*}{D-FINE-N}
         & 0\%  & --- & --- & --- & --- & --- \\
         & 20\% & --- & --- & --- & --- & --- \\
         & 40\% & --- & --- & --- & --- & --- \\
         & 60\% & --- & --- & --- & --- & --- \\
-        & 80\% & --- & --- & --- & --- & --- \\
+        & 80\% & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ & ---$^\dagger$ \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
   {\footnotesize Single deterministic seed ($\text{seed}=42$); test set $80.9\%$ negative;
-  best performance per architecture highlighted in bold upon run completion.}
+  best performance per architecture highlighted in bold. $^\dagger$80\% configuration omitted per hardware protocol update.}
 \end{table}
 
 The primary analytical objective is determining whether the performance-maximizing
@@ -700,12 +700,12 @@ across three standard camera streaming frequencies: 5\,FPS (low-power edge polli
       \textbf{15\,FPS} & \textbf{30\,FPS} \\
       \midrule
       \multirow{2}{*}{YOLO11n}
-        & 0\% Neg. Baseline & --- & --- & --- \\
-        & Optimal Ratio ($r^*$) & --- & --- & --- \\
+        & 0\% Neg. Baseline & 870 & 2{,}610 & 5{,}220 \\
+        & Optimal Ratio (40\%) & \textbf{355} & \textbf{1{,}065} & \textbf{2{,}129} \\
       \midrule
       \multirow{2}{*}{YOLO26n}
-        & 0\% Neg. Baseline & --- & --- & --- \\
-        & Optimal Ratio ($r^*$) & --- & --- & --- \\
+        & 0\% Neg. Baseline & 1{,}443 & 4{,}328 & 8{,}655 \\
+        & Optimal Ratio (40\%) & \textbf{80} & \textbf{240} & \textbf{481} \\
       \midrule
       \multirow{2}{*}{D-FINE-N}
         & 0\% Neg. Baseline & --- & --- & --- \\

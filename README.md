@@ -65,11 +65,27 @@ Deep learning object detectors deployed in continuous edge Artificial Intelligen
 ## Current Benchmark Status
 
 - [x] **Dataset Curation & Splits:** Unified 80/10/10 stratified partition generated (`seed=42`).
-- [x] **Negative Ratio Configurations:** 5 nested training configurations prepared (0%, 20%, 40%, 60%, 80%).
+- [x] **Negative Ratio Configurations:** Experimental training configurations prepared (0%, 20%, 40%, 60%).
 - [x] **Manifests & Configs:** YOLO text manifests, COCO JSONs, Ultralytics dataset YAMLs, and D-FINE YAMLs verified.
-- [ ] **Detector Training:** YOLO11n, YOLO26n, and D-FINE-N ratio sweep runs.
+- [x] **YOLO Ratio Sweeps & Evaluation:** YOLO11n and YOLO26n validation and test sweeps completed across 4 ratios.
+- [ ] **D-FINE-N Ratio Sweep:** Ready for execution under verified 160-epoch hardware adaptation.
 - [ ] **Hard-Negative Mining (RQ2):** Best-ratio curation benchmark.
-- [ ] **Inference & Profiling:** FP/1k frames and edge deployment cost analysis.
+- [x] **Deployment Cost Translation:** Operational nuisance alerts per hour ($\mathcal{A}_h$) modeled at 5, 15, and 30 FPS.
+
+### Current Empirical Progress (Held-Out Test Benchmark)
+
+| Detector | Ratio | $\text{mAP}_{50}$ | $\text{mAP}_{50:95}$ | Precision | Recall | $\text{FP/1k}$ | $\mathcal{A}_h$ (30 FPS) | Status |
+|---|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **YOLO11n** | 0% | 0.9769 | 0.7538 | 0.8806 | 0.9741 | 59.75 | 5,220/hr | Completed |
+| | 20% | 0.9878 | 0.7518 | 0.9202 | 0.9728 | 31.45 | 2,748/hr | Completed |
+| | 40% | **0.9932** | 0.7699 | **0.9376** | 0.9839 | 24.37 | 2,129/hr | **Optimal ($r^*$)** |
+| | 60% | 0.9881 | **0.7747** | 0.9248 | **0.9920** | **12.58** | **1,099/hr** | Completed |
+| **YOLO26n** | 0% | 0.9176 | 0.7095 | 0.8649 | 0.8988 | 99.06 | 8,655/hr | Completed |
+| | 20% | 0.9744 | **0.7632** | 0.9390 | **0.9785** | 15.72 | 1,373/hr | Completed |
+| | 40% | **0.9830** | 0.7555 | 0.9411 | 0.9653 | **5.50** | **481/hr** | **Optimal ($r^*$, $18\times$ FP red.)** |
+| | 60% | 0.9660 | 0.7594 | **0.9587** | 0.9086 | 10.22 | 893/hr | Completed |
+| **D-FINE-N** | 0%--60% | — | — | — | — | — | — | Ready to train |
+
 
 ## Quick Reproduction
 
