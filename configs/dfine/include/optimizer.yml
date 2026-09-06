@@ -1,4 +1,7 @@
-use_amp: True
+use_amp: False
+scaler:
+  type: GradScaler
+  enabled: False
 use_ema: True
 ema:
   type: ModelEMA

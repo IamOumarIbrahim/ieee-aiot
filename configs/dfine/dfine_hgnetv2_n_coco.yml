@@ -54,6 +54,7 @@ DFINETransformer:
 # Optimization & Training Schedule (RTX 4060 8GB Frozen Protocol: 160 epochs, stop_epoch 148)
 epochs: 160
 epoches: 160
+use_amp: False
 
 optimizer:
   type: AdamW

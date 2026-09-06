@@ -6,7 +6,7 @@ __pycache__/
 *.pth
 output/
 runs/
-DFINE/
+/DFINE/
 *.aux
 *.log
 *.out

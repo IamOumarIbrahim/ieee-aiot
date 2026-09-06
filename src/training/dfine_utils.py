@@ -142,6 +142,8 @@ def build_dfine_train_cmd(
     ]
     if use_amp:
         cmd.append("--use-amp")
+    else:
+        cmd.extend(["-u", "use_amp=False", "scaler=None"])
     if output_dir is not None:
         cmd.extend(["--output-dir", str(output_dir)])
     if device is not None:
