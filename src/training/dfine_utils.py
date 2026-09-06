@@ -103,7 +103,10 @@ def build_dfine_train_cmd(
     if output_dir is not None:
         cmd.extend(["--output-dir", str(output_dir)])
     if device is not None:
-        cmd.extend(["-d", str(device)])
+        dev_str = str(device).strip()
+        if dev_str.isdigit():
+            dev_str = f"cuda:{dev_str}"
+        cmd.extend(["-d", dev_str])
     return cmd
 
 
