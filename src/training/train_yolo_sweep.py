@@ -38,6 +38,7 @@ def parse_args():
     parser.add_argument("--close-mosaic", type=int, default=10, help="Epochs to disable mosaic (frozen: 10)")
     parser.add_argument("--weight-decay", type=float, default=0.0005, help="Weight decay (frozen: 0.0005)")
     parser.add_argument("--splits", type=str, default="00,20,40,60", help="Comma-separated split keys (e.g., '00,20,40,60' or 'all')")
+    parser.add_argument("--project", type=str, default=None, help="Custom project output directory")
     parser.add_argument("--amp", action="store_true", default=False, help="Enable PyTorch AMP mixed precision (default: False for Windows cuBLAS stability)")
     parser.add_argument("--eval-only", action="store_true", help="Run evaluation on existing checkpoints without retraining")
     parser.add_argument("--dry-run", action="store_true", help="Validate configurations without initiating training")
@@ -158,12 +159,29 @@ def main():
     args = parse_args()
     repo_root = Path(__file__).resolve().parents[2]
     model_stem = Path(args.model).stem
-    project_dir = repo_root / "runs" / f"{model_stem}_ratio_sweep"
+    if args.project:
+        project_dir = Path(args.project).resolve() if Path(args.project).is_absolute() else (repo_root / args.project).resolve()
+    else:
+        project_dir = repo_root / "runs" / f"{model_stem}_ratio_sweep"
     os.makedirs(project_dir, exist_ok=True)
 
     selected_splits = SPLITS
     if args.splits != "all":
-        filter_keys = [k.strip() for k in args.splits.split(",")]
+        raw_keys = [k.strip() for k in args.splits.split(",")]
+        filter_keys = []
+        for k in raw_keys:
+            if k in ("81", "81%", "nat", "natural", "80", "80%"):
+                filter_keys.append("80")
+            elif k in ("0", "0%"):
+                filter_keys.append("00")
+            elif k in ("20", "20%"):
+                filter_keys.append("20")
+            elif k in ("40", "40%"):
+                filter_keys.append("40")
+            elif k in ("60", "60%"):
+                filter_keys.append("60")
+            else:
+                filter_keys.append(k)
         selected_splits = [s for s in SPLITS if any(k in s["name"] for k in filter_keys)]
 
     mode_label = "Evaluation Only (--eval-only)" if args.eval_only else "Training & Evaluation Sweep"
@@ -213,7 +231,7 @@ def main():
             "optimizer": "auto",
             "amp": args.amp,
         },
-        "runs": []
+        "runs": list(existing_runs.values())
     }
 
     for idx, s in enumerate(selected_splits, 1):
@@ -264,7 +282,10 @@ def main():
                 }
             }
 
+            summary["runs"] = [r for r in summary["runs"] if r["split"] != split_name]
             summary["runs"].append(run_result)
+            order = {s["name"]: i for i, s in enumerate(SPLITS)}
+            summary["runs"].sort(key=lambda r: order.get(r["split"], 99))
             print(f"  Val  -> mAP@50: {val_res['map50']:.4f}, mAP@50-95: {val_res['map50_95']:.4f}, FP/1k: {val_res['fp_per_1k']:.2f}")
             print(f"  Test -> mAP@50: {test_res['map50']:.4f}, mAP@50-95: {test_res['map50_95']:.4f}, FP/1k: {test_res['fp_per_1k']:.2f}")
 
@@ -337,14 +358,17 @@ def main():
                 }
             }
 
+            summary["runs"] = [r for r in summary["runs"] if r["split"] != split_name]
             summary["runs"].append(run_result)
+            order = {s["name"]: i for i, s in enumerate(SPLITS)}
+            summary["runs"].sort(key=lambda r: order.get(r["split"], 99))
             print(f"  Completed {split_name} in {elapsed_min:.1f}m:")
             print(f"    Val  -> mAP@50: {val_res['map50']:.4f}, FP/1k: {val_res['fp_per_1k']:.2f}")
             print(f"    Test -> mAP@50: {test_res['map50']:.4f}, FP/1k: {test_res['fp_per_1k']:.2f}")
 
-            del model
             if eval_model is not model:
                 del eval_model
+            del model
             gc.collect()
             if torch.cuda.is_available():
                 torch.cuda.empty_cache()

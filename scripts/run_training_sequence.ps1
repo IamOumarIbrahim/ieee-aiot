@@ -42,16 +42,18 @@
 
 [CmdletBinding()]
 param(
-    [ValidateSet("yolo11n", "yolo26n", "dfine", "all")]
+    [ValidateSet("yolo11n", "yolo26n", "yolo12n", "dfine", "all")]
     [string]$Detector = "yolo11n",
 
-    [string]$Splits = "00,20,40,60",
+    [string]$Splits = "00,20,40,60,80",
 
     [int]$Epochs = 0,
 
     [int]$Batch = 0,
 
     [string]$Device = "0",
+
+    [string]$Project = "",
 
     [switch]$DryRun,
 
@@ -72,10 +74,13 @@ if ($Splits -eq "20" -or $Splits -eq "train_20_low_neg") {
     exit 0
 }
 
-# Map 'all' to the 4 arithmetic ratio splits (0%, 20%, 40%, 60%) per user request (80% deferred)
-if ($Splits -eq "all") {
-    Write-Host "`n[CONFIG] Splits 'all' mapped to 4-ratio sweep ('00,20,40,60'). 80% deferred per protocol." -ForegroundColor Yellow
+# Support convenience split aliases
+if ($Splits -eq "4") {
+    Write-Host "`n[CONFIG] Splits mapped to 4-ratio sweep ('00,20,40,60')." -ForegroundColor Yellow
     $Splits = "00,20,40,60"
+} elseif ($Splits -eq "all" -or $Splits -eq "5") {
+    Write-Host "`n[CONFIG] Splits mapped to full 5-ratio sweep ('00,20,40,60,80')." -ForegroundColor Yellow
+    $Splits = "00,20,40,60,80"
 }
 
 Write-Host "============================================================" -ForegroundColor Cyan
@@ -115,7 +120,7 @@ Write-Host "`n[3/3] Initiating Detector Training Sequence..." -ForegroundColor Y
 
 $DetectorsToRun = @()
 if ($Detector -eq "all") {
-    $DetectorsToRun = @("yolo11n", "yolo26n", "dfine")
+    $DetectorsToRun = @("yolo11n", "yolo26n", "yolo12n")
 } else {
     $DetectorsToRun = @($Detector)
 }
@@ -123,7 +128,7 @@ if ($Detector -eq "all") {
 foreach ($Det in $DetectorsToRun) {
     Write-Host "`n>>> Processing Detector: $Det <<<" -ForegroundColor Magenta
 
-    if ($Det -in @("yolo11n", "yolo26n")) {
+    if ($Det -in @("yolo11n", "yolo26n", "yolo12n")) {
         $ModelFile = "$RepoRoot\$Det.pt"
         if (-not (Test-Path $ModelFile)) {
             Write-Host "  [NOTICE] Local weights file not found at $ModelFile. Ultralytics will auto-download $Det.pt if available." -ForegroundColor Yellow
@@ -141,6 +146,10 @@ foreach ($Det in $DetectorsToRun) {
             "--device", $Device,
             "--splits", $Splits
         )
+
+        if ($Project) {
+            $YoloArgs += @("--project", $Project)
+        }
 
         if ($DryRun) {
             $YoloArgs += "--dry-run"

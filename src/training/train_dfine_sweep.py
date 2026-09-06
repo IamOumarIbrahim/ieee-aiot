@@ -4,7 +4,7 @@ train_dfine_sweep.py - Automated D-FINE-N Ratio Sweep Launcher & Evaluator.
 Orchestrates sequential training across the 5 negative-ratio configurations using the upstream D-FINE engine:
 - Model: D-FINE-N (HGNetv2-B0 backbone)
 - 5 arithmetic ratio splits: 0%, 20%, 40%, 60%, 80%
-- Frozen RTX 4060 protocol: physical batch 4, accum steps 8 (effective batch 32), 160 epochs, stop_epoch 148, seed 42
+- Frozen RTX 4060 protocol: physical batch 8, accum steps 4 (effective batch 32), 160 epochs, stop_epoch 148, seed 42
 - Native COCO evaluation & FP/1k evaluation on negative benchmark test frames
 - Generates runs/dfine_ratio_sweep/dfine_sweep_summary.json and .md matching YOLO sweep schema
 """
