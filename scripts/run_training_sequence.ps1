@@ -45,7 +45,7 @@ param(
     [ValidateSet("yolo11n", "yolo26n", "dfine", "all")]
     [string]$Detector = "yolo11n",
 
-    [string]$Splits = "all",
+    [string]$Splits = "00,20,40,60",
 
     [int]$Epochs = 0,
 
@@ -68,6 +68,12 @@ $RepoRoot = (Resolve-Path "$PSScriptRoot\..").Path
 if ($Splits -eq "20" -or $Splits -eq "train_20_low_neg") {
     Write-Host "`n[SKIP] Single-split test (-Splits '$Splits') skipped per user configuration.`n" -ForegroundColor Cyan
     exit 0
+}
+
+# Map 'all' to the 4 arithmetic ratio splits (0%, 20%, 40%, 60%) per user request (80% deferred)
+if ($Splits -eq "all") {
+    Write-Host "`n[CONFIG] Splits 'all' mapped to 4-ratio sweep ('00,20,40,60'). 80% deferred per protocol." -ForegroundColor Yellow
+    $Splits = "00,20,40,60"
 }
 
 Write-Host "============================================================" -ForegroundColor Cyan

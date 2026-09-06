@@ -37,7 +37,7 @@ def parse_args():
     parser.add_argument("--device", type=str, default="0", help="CUDA device index (e.g. 0, cpu)")
     parser.add_argument("--close-mosaic", type=int, default=10, help="Epochs to disable mosaic (frozen: 10)")
     parser.add_argument("--weight-decay", type=float, default=0.0005, help="Weight decay (frozen: 0.0005)")
-    parser.add_argument("--splits", type=str, default="all", help="Comma-separated split keys (e.g., '00,20' or 'all')")
+    parser.add_argument("--splits", type=str, default="00,20,40,60", help="Comma-separated split keys (e.g., '00,20,40,60' or 'all')")
     parser.add_argument("--amp", action="store_true", default=False, help="Enable PyTorch AMP mixed precision (default: False for Windows cuBLAS stability)")
     parser.add_argument("--dry-run", action="store_true", help="Validate configurations without initiating training")
     return parser.parse_args()

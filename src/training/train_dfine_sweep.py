@@ -43,7 +43,7 @@ DFINE_SPLITS = [
 def parse_args():
     parser = argparse.ArgumentParser(description="Automated D-FINE Ratio Sweep Launcher & Evaluator")
     parser.add_argument("--dfine-dir", type=str, default="DFINE", help="Path to cloned upstream Peterande/D-FINE repository")
-    parser.add_argument("--splits", type=str, default="all", help="Comma-separated split keys (e.g., '00,20' or 'all')")
+    parser.add_argument("--splits", type=str, default="00,20,40,60", help="Comma-separated split keys (e.g., '00,20,40,60' or 'all')")
     parser.add_argument("--device", type=str, default="0", help="CUDA visible device index")
     parser.add_argument("--no-amp", action="store_true", default=False, help="Disable AMP for D-FINE training (default: AMP enabled)")
     parser.add_argument("--eval-only", action="store_true", help="Skip training and only run evaluation on existing checkpoints")
