@@ -70,7 +70,7 @@ def main():
     print("  D-FINE-N Negative-Frame Ratio Sweep Launcher & Evaluator")
     print(f"  Upstream D-FINE directory: {dfine_path}")
     print(f"  Target splits: {[s['name'] for s in selected_splits]}")
-    print(f"  Protocol: batch=4, accum=8 (eff=32), epochs=160, stop_epoch=148, seed=42, amp={use_amp}")
+    print(f"  Protocol: batch=8, accum=4 (eff=32), epochs=160, stop_epoch=148, seed=42, amp={use_amp}")
     print(f"  Output Directory: {project_dir}")
     print("============================================================\n")
 
@@ -129,8 +129,8 @@ def main():
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
             "protocol": {
                 "epochs": 160,
-                "batch": 4,
-                "accum_steps": 8,
+                "batch": 8,
+                "accum_steps": 4,
                 "effective_batch": 32,
                 "stop_epoch": 148,
                 "seed": 42,

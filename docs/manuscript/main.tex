@@ -503,8 +503,8 @@ Table~\ref{tab:training} documents the frozen configuration.
       \toprule
       \textbf{Hyperparameter}     & \textbf{YOLO11n} & \textbf{YOLO26n} & \textbf{D-FINE-N} \\
       \midrule
-      Physical Batch Size         & 16      & 16      & 4              \\
-      Gradient Accumulation Steps & 1       & 1       & 8              \\
+      Physical Batch Size         & 16      & 16      & 8              \\
+      Gradient Accumulation Steps & 1       & 1       & 4              \\
       Effective Batch Size        & 16      & 16      & 32             \\
       Training Epochs             & 100     & 100     & 160            \\
       Optimizer                   & \texttt{auto} & \texttt{auto} & AdamW \\
@@ -519,14 +519,14 @@ Table~\ref{tab:training} documents the frozen configuration.
   \end{center}
   \vspace{-2pt}
   {\footnotesize Ultralytics uses \texttt{optimizer: auto}, $\text{wd}=0.0005$, $\text{close\_mosaic}=10$.
-  D-FINE-N uses batch $4\times8$ as an 8\,GB VRAM hardware adaptation, retaining official unscaled LRs.}
+  D-FINE-N uses batch $8\times4$ as an 8\,GB VRAM hardware adaptation, retaining official unscaled LRs.}
 \end{table}
 
 To guarantee reproducible, hardware-isolated execution on an 8\,GB VRAM GPU (NVIDIA
 GeForce RTX 4060):
 \begin{enumerate}
   \item \textbf{Batch Size Execution:} YOLO11n and YOLO26n execute at physical batch 16.
-        D-FINE-N executes at physical batch 4 with 8-step gradient accumulation (effective
+        D-FINE-N executes at physical batch 8 with 4-step gradient accumulation (effective
         batch 32), documented explicitly as an 8\,GB hardware adaptation rather than an
         official batch of 128.
   \item \textbf{Optimization Budgets:} Ultralytics models utilize framework-native
@@ -536,13 +536,12 @@ GeForce RTX 4060):
   \item \textbf{Augmentation Schedules:} YOLO models disable mosaic augmentation for the
         final 10 epochs (\texttt{close\_}\allowbreak\texttt{mosaic}=10). D-FINE-N disables heavy augmentation
         at epoch 148 (\texttt{stop\_}\allowbreak\texttt{epoch}=148).
-  \item \textbf{Precision and cuBLAS Stability:} YOLO models are trained under full single
+  \item \textbf{Precision and cuBLAS Stability:} All models are trained under full single
         precision (FP32, \texttt{amp=False}) to circumvent an internal cuBLAS driver fault
         (\texttt{CUBLAS\_}\allowbreak\texttt{STATUS\_}\allowbreak\texttt{INTERNAL\_}\allowbreak\texttt{ERROR})
-        encountered in PyTorch 2.6.0 on Windows during FP16 strided GEMM operations on
+        encountered in PyTorch 2.6.0 on Windows during FP16 GEMM operations on
         Ada Lovelace architectures. FP32 execution is numerically stable and consumes
-        $\approx 1.5$\,GB of the 8\,GB VRAM budget at batch 16. D-FINE-N trains under native
-        mixed precision (AMP).
+        $\approx 2.8$\,GB of the 8\,GB VRAM budget for D-FINE-N at batch 8.
   \item \textbf{Hyperparameter Invariance:} All training hyperparameters within each
         architecture family are held strictly invariant across all ratio splits, isolating
         negative-frame configuration as the sole independent variable.
