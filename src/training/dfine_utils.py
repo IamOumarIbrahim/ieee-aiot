@@ -21,7 +21,13 @@ import time
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple, Any
 
-DEFAULT_DFINE_AMP = True
+try:
+    from safe_linear import apply_safe_linear_patch
+    apply_safe_linear_patch()
+except ImportError:
+    pass
+
+DEFAULT_DFINE_AMP = False
 
 
 def get_repo_root() -> Path:
@@ -40,9 +46,45 @@ def get_dfine_root(dfine_dir: Optional[str] = None) -> Path:
     return (repo_root / "DFINE").resolve()
 
 
-def ensure_dfine_sys_path(dfine_dir: Optional[str] = None) -> Path:
-    """Adds DFINE directory to sys.path if not already present."""
+def patch_dfine_if_needed(dfine_dir: Optional[str] = None) -> Path:
+    """Applies Windows compatibility patches to upstream DFINE if needed."""
     dfine_path = get_dfine_root(dfine_dir)
+    repo_root = get_repo_root()
+    if not (dfine_path / "train.py").exists():
+        return dfine_path
+
+    # 1. Install SafeLinear patch
+    core_dir = dfine_path / "src" / "core"
+    safe_linear_src = repo_root / "src" / "training" / "safe_linear.py"
+    safe_linear_dst = core_dir / "safe_linear.py"
+    if safe_linear_src.exists():
+        if not safe_linear_dst.exists() or safe_linear_dst.read_text(encoding="utf-8") != safe_linear_src.read_text(encoding="utf-8"):
+            import shutil
+            shutil.copy2(safe_linear_src, safe_linear_dst)
+
+    init_file = core_dir / "__init__.py"
+    if init_file.exists():
+        content = init_file.read_text(encoding="utf-8")
+        if "apply_safe_linear_patch" not in content:
+            with open(init_file, "a", encoding="utf-8") as f:
+                f.write("\nfrom .safe_linear import apply_safe_linear_patch\napply_safe_linear_patch()\n")
+
+    # 2. Patch device string normalization in _solver.py
+    solver_file = dfine_path / "src" / "solver" / "_solver.py"
+    if solver_file.exists():
+        s_content = solver_file.read_text(encoding="utf-8")
+        old_snippet = "device = torch.device(cfg.device)"
+        new_snippet = 'dev_str = str(cfg.device).strip()\n            if dev_str.isdigit():\n                dev_str = f"cuda:{dev_str}"\n            device = torch.device(dev_str)'
+        if old_snippet in s_content and new_snippet not in s_content:
+            s_content = s_content.replace(old_snippet, new_snippet, 1)
+            solver_file.write_text(s_content, encoding="utf-8")
+
+    return dfine_path
+
+
+def ensure_dfine_sys_path(dfine_dir: Optional[str] = None) -> Path:
+    """Adds DFINE directory to sys.path if not already present, ensuring patches are applied."""
+    dfine_path = patch_dfine_if_needed(dfine_dir)
     dfine_str = str(dfine_path)
     if dfine_str not in sys.path:
         sys.path.insert(0, dfine_str)
@@ -83,7 +125,7 @@ def find_dfine_checkpoint(
 def build_dfine_train_cmd(
     dfine_train_py: Path | str,
     config_path: Path | str,
-    use_amp: bool = True,
+    use_amp: bool = False,
     seed: int = 42,
     output_dir: Optional[Path | str] = None,
     device: Optional[str] = None

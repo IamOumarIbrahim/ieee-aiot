@@ -29,6 +29,7 @@ from dfine_utils import (
     load_dfine_model,
     evaluate_dfine_coco,
     calculate_dfine_fp_per_1k,
+    patch_dfine_if_needed,
     DEFAULT_DFINE_AMP,
 )
 
@@ -45,7 +46,7 @@ def parse_args():
     parser.add_argument("--dfine-dir", type=str, default="DFINE", help="Path to cloned upstream Peterande/D-FINE repository")
     parser.add_argument("--splits", type=str, default="00,20,40,60", help="Comma-separated split keys (e.g., '00,20,40,60' or 'all')")
     parser.add_argument("--device", type=str, default="0", help="CUDA visible device index")
-    parser.add_argument("--no-amp", action="store_true", default=False, help="Disable AMP for D-FINE training (default: AMP enabled)")
+    parser.add_argument("--amp", action="store_true", default=False, help="Enable AMP for D-FINE training (default: False for Windows cuBLAS stability)")
     parser.add_argument("--eval-only", action="store_true", help="Skip training and only run evaluation on existing checkpoints")
     parser.add_argument("--dry-run", action="store_true", help="Validate configuration paths and D-FINE entrypoint")
     return parser.parse_args()
@@ -61,7 +62,7 @@ def main():
         filter_keys = [k.strip() for k in args.splits.split(",")]
         selected_splits = [s for s in DFINE_SPLITS if any(k in s["name"] for k in filter_keys)]
 
-    use_amp = not args.no_amp
+    use_amp = args.amp
     project_dir = repo_root / "runs" / "dfine_ratio_sweep"
     os.makedirs(project_dir, exist_ok=True)
 
@@ -96,6 +97,9 @@ def main():
         print(f"[ERROR] D-FINE train.py not found at: {train_py}")
         print("Please ensure Peterande/D-FINE exists in repo or specify --dfine-dir.")
         sys.exit(1)
+
+    # Ensure Windows compatibility patches are applied to D-FINE
+    patch_dfine_if_needed(dfine_path)
 
     # Ensure D-FINE can find data directory when executed from dfine_path
     dfine_data = dfine_path / "data"

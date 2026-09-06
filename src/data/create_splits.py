@@ -48,6 +48,18 @@ def make_coco_subset(master_coco, image_ids):
         "annotations": sub_annotations
     }
 
+def to_dfine_coco(coco_dict):
+    """Convert category IDs to 0-indexed for D-FINE custom dataset compatibility."""
+    import copy
+    d = copy.deepcopy(coco_dict)
+    min_cat = min((c["id"] for c in d["categories"]), default=0)
+    if min_cat == 1:
+        for c in d["categories"]:
+            c["id"] -= 1
+        for a in d["annotations"]:
+            a["category_id"] -= 1
+    return d
+
 def main():
     repo_root = Path(__file__).resolve().parents[2]
     annotations_path = repo_root / "data" / "annotations" / "RGB" / "annotations.json"
@@ -203,8 +215,8 @@ def main():
     save_coco(test_coco, coco_out_dir / "instances_test.json")
     save_coco(val_coco, coco_out_dir / "instances_val.json")
 
-    save_coco(test_coco, dfine_out_dir / "instances_test.json")
-    save_coco(val_coco, dfine_out_dir / "instances_val.json")
+    save_coco(to_dfine_coco(test_coco), dfine_out_dir / "instances_test.json")
+    save_coco(to_dfine_coco(val_coco), dfine_out_dir / "instances_val.json")
 
     save_coco(test_coco, eval_out_dir / "instances_test.json")
     save_coco(val_coco, eval_out_dir / "instances_val.json")
@@ -246,13 +258,13 @@ def main():
         # Save COCO json
         cfg_coco = make_coco_subset(master_coco, [img["id"] for img in combined])
         save_coco(cfg_coco, coco_out_dir / f"instances_{cfg_key}.json")
-        save_coco(cfg_coco, dfine_out_dir / f"instances_{cfg_key}.json")
+        save_coco(to_dfine_coco(cfg_coco), dfine_out_dir / f"instances_{cfg_key}.json")
         save_coco(cfg_coco, eval_out_dir / f"instances_{cfg_key}.json")
 
     # Also keep train.txt and instances_train.json pointing to 80% dominant-negative split for default compatibility
     save_yolo_txt(to_yolo_paths(train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]), yolo_out_dir / "train.txt")
     save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]]), coco_out_dir / "instances_train.json")
-    save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]]), dfine_out_dir / "instances_train.json")
+    save_coco(to_dfine_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]])), dfine_out_dir / "instances_train.json")
     save_coco(make_coco_subset(master_coco, [img["id"] for img in train_configs["train_80_max_neg"]["pos"] + train_configs["train_80_max_neg"]["neg"]]), eval_out_dir / "instances_train.json")
 
     # Save summary stats
