@@ -39,6 +39,8 @@ def parse_args():
     parser.add_argument("--weight-decay", type=float, default=0.0005, help="Weight decay (frozen: 0.0005)")
     parser.add_argument("--splits", type=str, default="00,20,40,60", help="Comma-separated split keys (e.g., '00,20,40,60' or 'all')")
     parser.add_argument("--project", type=str, default=None, help="Custom project output directory")
+    parser.add_argument("--optimizer", type=str, default="AdamW", help="Optimizer name (default: AdamW for Windows cuBLAS stability)")
+    parser.add_argument("--lr0", type=float, default=0.00125, help="Initial learning rate (default: 0.00125, matching nc=4 AdamW schedule)")
     parser.add_argument("--amp", action="store_true", default=False, help="Enable PyTorch AMP mixed precision (default: False for Windows cuBLAS stability)")
     parser.add_argument("--eval-only", action="store_true", help="Run evaluation on existing checkpoints without retraining")
     parser.add_argument("--dry-run", action="store_true", help="Validate configurations without initiating training")
@@ -228,7 +230,8 @@ def main():
             "seed": args.seed,
             "close_mosaic": args.close_mosaic,
             "weight_decay": args.weight_decay,
-            "optimizer": "auto",
+            "optimizer": args.optimizer,
+            "lr0": args.lr0,
             "amp": args.amp,
         },
         "runs": list(existing_runs.values())
@@ -312,7 +315,8 @@ def main():
                 seed=args.seed,
                 amp=args.amp,
                 close_mosaic=args.close_mosaic,
-                optimizer="auto",
+                optimizer=args.optimizer,
+                lr0=args.lr0,
                 weight_decay=args.weight_decay,
                 project=str(project_dir),
                 name=split_name,
