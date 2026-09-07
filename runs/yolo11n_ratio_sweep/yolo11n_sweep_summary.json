@@ -1,6 +1,6 @@
 {
-  "model": "yolo11n.pt",
-  "timestamp": "2026-09-06 17:25:39",
+  "model": "C:\\Dev\\repos\\Public repos\\ieee-aiot\\yolo11n.pt",
+  "timestamp": "2026-09-06 21:06:10",
   "protocol": {
     "epochs": 100,
     "batch": 16,
@@ -8,7 +8,8 @@
     "seed": 42,
     "close_mosaic": 10,
     "weight_decay": 0.0005,
-    "optimizer": "auto",
+    "optimizer": "AdamW",
+    "lr0": 0.00125,
     "amp": false
   },
   "runs": [
@@ -232,6 +233,62 @@
           "phone_use": {
             "map50": 0.9939,
             "map50_95": 0.7448
+          }
+        }
+      }
+    },
+    {
+      "split": "train_80_max_neg",
+      "ratio": "80%",
+      "train_time_minutes": 229.41,
+      "val_precision": 0.9163,
+      "val_recall": 0.9604,
+      "val_map50": 0.9629,
+      "val_map50_95": 0.7155,
+      "val_fp_per_1k": 14.15,
+      "val_total_fps": 18,
+      "test_precision": 0.9644,
+      "test_recall": 0.9766,
+      "test_map50": 0.9933,
+      "test_map50_95": 0.7606,
+      "test_fp_per_1k": 4.72,
+      "total_test_fps": 6,
+      "test_neg_frames": 1272,
+      "per_class": {
+        "val": {
+          "yawning": {
+            "map50": 0.8669,
+            "map50_95": 0.6236
+          },
+          "hand_over_mouth": {
+            "map50": 0.995,
+            "map50_95": 0.7296
+          },
+          "drinking": {
+            "map50": 0.995,
+            "map50_95": 0.7502
+          },
+          "phone_use": {
+            "map50": 0.9945,
+            "map50_95": 0.7586
+          }
+        },
+        "test": {
+          "yawning": {
+            "map50": 0.9883,
+            "map50_95": 0.7073
+          },
+          "hand_over_mouth": {
+            "map50": 0.995,
+            "map50_95": 0.8066
+          },
+          "drinking": {
+            "map50": 0.995,
+            "map50_95": 0.7877
+          },
+          "phone_use": {
+            "map50": 0.9948,
+            "map50_95": 0.7407
           }
         }
       }

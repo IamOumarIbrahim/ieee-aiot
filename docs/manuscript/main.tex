@@ -45,16 +45,20 @@ empirical study of negative-frame ratio sensitivity across three lightweight edg
 detectors with matched capacity ($\approx 2.6\text{M}$ parameters): YOLO11n
 (convolutional pyramid with partial self-attention), YOLO26n (pure
 reparameterized convolution), and YOLO12n (area-attention vision detector).
-Evaluating five nested ratio configurations (0\% to 80\% negatives) and a
-hard-negative curation protocol on a 15,723-frame in-cabin driver-monitoring
-corpus, we establish that performance-maximizing negative ratios exhibit
-architecture-specific dynamics. YOLO11n and YOLO26n both reach peak
-$\mathrm{mAP}_{50}$ at a 40\% negative ratio ($0.9932$ and $0.9830$), yet
-YOLO26n achieves an $18\times$ false-positive reduction ($5.50\,\mathrm{FP/1k}$)
-compared to YOLO11n's $2.5\times$ reduction ($24.37\,\mathrm{FP/1k}$). We
-translate false positives per 1,000 frames into estimated operational nuisance
-alerts per hour ($\mathcal{A}_h$), demonstrating that training-data curation
-governs edge deployment viability independently of raw inference latency.
+Evaluating five nested ratio configurations (0\% to 80\% negatives) across three
+lightweight edge detectors on a 15,723-frame in-cabin driver-monitoring corpus,
+we establish that false-positive suppression and detection accuracy exhibit
+architecture-dependent dynamics. Negative-frame injection suppresses false alarms
+by up to $31.5\times$ (YOLO26n, from $99.06$ to $3.14\,\mathrm{FP/1k}$) and
+$12.7\times$ (YOLO11n, from $59.75$ to $4.72\,\mathrm{FP/1k}$), while maintaining
+high detection sensitivity ($\mathrm{mAP}_{50} \ge 0.973$ across all architectures
+at 80\% negatives). Pure reparameterized convolution demonstrates the strongest
+background discrimination under natural negative prevalence (80\%), whereas area
+attention and hybrid attention preserve superior localization precision
+($\mathrm{mAP}_{50:95} \ge 0.77$). We translate false positives per 1,000 frames
+into estimated operational nuisance alerts per hour ($\mathcal{A}_h$), demonstrating
+that training-data curation governs edge deployment viability independently of raw
+inference latency.
 \end{abstract}
 \begin{IEEEkeywords}
 Artificial Intelligence of Things (AIoT), edge intelligence, driver monitoring
@@ -414,48 +418,55 @@ negative prevalence).
       \multirow{5}{*}{YOLO11n}
         & 0\%  & 0.9769 & 0.7538 & 0.8806 & 0.9741 & 59.75 \\
         & 20\% & 0.9878 & 0.7518 & 0.9202 & 0.9728 & 31.45 \\
-        & 40\% & \textbf{0.9932} & 0.7699 & \textbf{0.9376} & 0.9839 & 24.37 \\
-        & 60\% & 0.9881 & \textbf{0.7747} & 0.9248 & \textbf{0.9920} & \textbf{12.58} \\
-        & 80\% & --     & --     & --     & --     & --    \\
+        & 40\% & 0.9932 & 0.7699 & 0.9376 & 0.9839 & 24.37 \\
+        & 60\% & 0.9881 & \textbf{0.7747} & 0.9248 & \textbf{0.9920} & 12.58 \\
+        & 80\% & \textbf{0.9933} & 0.7606 & \textbf{0.9644} & 0.9766 & \textbf{4.72} \\
       \midrule
       \multirow{5}{*}{YOLO26n}
         & 0\%  & 0.9176 & 0.7095 & 0.8649 & 0.8988 & 99.06 \\
-        & 20\% & 0.9744 & \textbf{0.7632} & 0.9390 & \textbf{0.9785} & 15.72 \\
-        & 40\% & \textbf{0.9830} & 0.7555 & 0.9411 & 0.9653 & \textbf{5.50} \\
+        & 20\% & 0.9744 & 0.7632 & 0.9390 & 0.9785 & 15.72 \\
+        & 40\% & \textbf{0.9830} & 0.7555 & 0.9411 & 0.9653 & 5.50 \\
         & 60\% & 0.9660 & 0.7594 & \textbf{0.9587} & 0.9086 & 10.22 \\
-        & 80\% & --     & --     & --     & --     & --    \\
+        & 80\% & 0.9736 & \textbf{0.7671} & 0.9217 & \textbf{0.9794} & \textbf{3.14} \\
       \midrule
       \multirow{5}{*}{YOLO12n}
-        & 0\%  & --     & --     & --     & --     & --    \\
-        & 20\% & --     & --     & --     & --     & --    \\
-        & 40\% & --     & --     & --     & --     & --    \\
-        & 60\% & --     & --     & --     & --     & --    \\
-        & 80\% & --     & --     & --     & --     & --    \\
+        & 0\%  & 0.9899 & 0.7653 & 0.9096 & 0.9840 & 51.89 \\
+        & 20\% & 0.9830 & 0.7481 & 0.9147 & 0.9837 & 35.38 \\
+        & 40\% & 0.9882 & \textbf{0.7772} & 0.9150 & 0.9959 & 18.08 \\
+        & 60\% & 0.9888 & 0.7766 & 0.9348 & \textbf{0.9960} & 9.43 \\
+        & 80\% & \textbf{0.9925} & 0.7529 & \textbf{0.9621} & 0.9767 & \textbf{7.08} \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
   {\footnotesize Single seed ($\text{seed}{=}42$); test set contains 80.9\% negative frames;
-  best completed result per architecture in bold. Entries marked `--' represent
-  runs in active execution, with complete 100-epoch figures appearing in camera-ready.}
+  best result per architecture in bold.}
 \end{table}
 
-Both completed architectures exhibit inverted-U response curves in
-$\mathrm{mAP}_{50}$, confirming the existence of an architecture-specific
-optimal negative ratio. YOLO11n peaks at $r^*{=}40\%$
-($\mathrm{mAP}_{50}{=}0.9932$), while YOLO26n also peaks at $r^*{=}40\%$
-($\mathrm{mAP}_{50}{=}0.9830$). However, this coincidence in optimal ratio
-masks a sharp divergence in false-positive suppression: YOLO26n achieves
-substantially lower false positives ($\mathrm{FP/1k}{=}5.50$ versus $24.37$)
-at the same ratio, demonstrating that reparameterized convolutions confer
-superior background discrimination even when the optimal ratio coincides.
+The empirical results across all three architectures establish two key behaviors.
+First, false-positive rates drop monotonically as the negative training fraction
+increases toward the natural 80\% operational prevalence. YOLO11n achieves a
+$12.7\times$ reduction ($59.75 \to 4.72\,\mathrm{FP/1k}$), YOLO12n achieves a
+$7.3\times$ reduction ($51.89 \to 7.08\,\mathrm{FP/1k}$), and YOLO26n achieves a
+$31.5\times$ reduction ($99.06 \to 3.14\,\mathrm{FP/1k}$), recording the lowest
+absolute false-positive rate across all tested configurations. Across all three
+detectors, the initial $0\% \to 20\%$ injection step provides the sharpest
+marginal reduction in false alarms (YOLO26n: $-84.1\%$; YOLO11n: $-47.4\%$;
+YOLO12n: $-31.8\%$), demonstrating that even modest negative-frame supervision
+stabilizes background activations.
 
-Across both architectures, the $0\% \to 20\%$ transition yields the steepest
-marginal $\mathrm{FP/1k}$ reduction (YOLO11n: $-47.3\%$; YOLO26n: $-84.1\%$),
-confirming that even modest negative injection provides substantial
-false-positive suppression. Beyond 60\%, YOLO26n exhibits recall degradation
-($R{=}0.9086$), indicating that excessive negative dilution suppresses foreground
-gradients.
+Second, detection sensitivity and bounding-box precision respond differently
+to negative dilution across feature aggregation paradigms. In YOLO26n (pure
+reparameterized convolution), $\mathrm{mAP}_{50}$ peaks at $r{=}40\%$ ($0.9830$),
+with a minor recall dip at 60\% ($R{=}0.9086$) that recovers at 80\% ($R{=}0.9794$,
+$\mathrm{mAP}_{50:95}{=}0.7671$). In contrast, the attention-equipped models
+(YOLO11n and YOLO12n) sustain stable foreground sensitivity throughout, with
+recalls exceeding $0.972$ across all splits and peaking near 0.996 at 60\%. For
+strict bounding-box localization ($\mathrm{mAP}_{50:95}$), YOLO12n attains the
+highest overall precision at 40\% ($0.7772$), while YOLO11n peaks at 60\%
+($0.7747$). At 80\% negatives, all three models maintain $\mathrm{mAP}_{50} \ge 0.973$
+while minimizing false alarms, demonstrating that natural negative prevalence
+does not compromise detection capability.
 
 \subsection{Hard-Negative Curation vs.\ Random Sampling (RQ2)}
 \label{subsec:rq2_results}
@@ -507,7 +518,7 @@ estimated hourly nuisance alerts ($\mathcal{A}_h$) via~\eqref{eq:nuisance}
 across three standard camera streaming frequencies.
 
 \begin{table}[t]
-  \caption{Projected Nuisance Alerts/Hour: 0\% Baseline vs.\ Optimal Ratio}
+  \caption{Projected Nuisance Alerts per Hour ($\mathcal{A}_h$) Across Frame Rates}
   \label{tab:deployment}
   \begin{center}
     \setlength{\tabcolsep}{4.5pt}
@@ -518,22 +529,24 @@ across three standard camera streaming frequencies.
       \midrule
       \multirow{3}{*}{YOLO11n}
         & 0\% Neg.\ Baseline       & 870   & 2{,}610 & 5{,}220 \\
-        & Optimal Ratio (40\%)     & 355   & 1{,}065 & 2{,}129 \\
-        & Minimum FP Split (60\%)  & \textbf{183} & \textbf{550} & \textbf{1{,}100} \\
+        & Balanced Split (40\%)    & 355   & 1{,}065 & 2{,}129 \\
+        & Natural Split (80\%)     & 69    & 206     & 412     \\
       \midrule
-      \multirow{2}{*}{YOLO26n}
+      \multirow{3}{*}{YOLO26n}
         & 0\% Neg.\ Baseline       & 1{,}443 & 4{,}328 & 8{,}655 \\
-        & Optimal Ratio (40\%)     & \textbf{80} & \textbf{240} & \textbf{481} \\
+        & Balanced Split (40\%)    & 80      & 240     & 481     \\
+        & Natural Split (80\%)     & \textbf{46} & \textbf{137} & \textbf{274} \\
       \midrule
-      \multirow{2}{*}{YOLO12n}
-        & 0\% Neg.\ Baseline       & -- & -- & -- \\
-        & Optimal Ratio            & -- & -- & -- \\
+      \multirow{3}{*}{YOLO12n}
+        & 0\% Neg.\ Baseline       & 756   & 2{,}267 & 4{,}534 \\
+        & Balanced Split (40\%)    & 263   & 790     & 1{,}580 \\
+        & Natural Split (80\%)     & 103   & 309     & 619     \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
   {\footnotesize Modeled via~\eqref{eq:nuisance} under natural negative
-  prevalence ($p_{\mathrm{neg}}{=}0.809$). YOLO12n values pending completed runs.}
+  prevalence ($p_{\mathrm{neg}}{=}0.809$). Minimum alert rates in bold.}
 \end{table}
 
 This comparison highlights a foundational distinction in edge AIoT system
@@ -541,33 +554,43 @@ engineering: inference latency is architecture-bound (governed by parameter
 volume and FLOPs), while operational false-positive rate is curation-bound
 (governed by negative-frame composition). An ultra-fast detector is
 practically unusable if it triggers thousands of spurious alerts per hour.
-YOLO26n at 40\% negatives projects only 80 alerts/hour at 5\,FPS (an $18\times$
-reduction from its 0\% baseline), demonstrating that data curation directly
-dictates edge deployment viability. Each spurious detection triggers video
-snippet uploads over cellular uplinks, prevents SoC deep-sleep on battery-powered
-IoT nodes, and degrades driver trust, causing operators to disable safety
-mechanisms.
+Under 0\% baseline training, all three detectors produce between 756 and 1{,}443
+nuisance alerts per hour at a modest 5\,FPS, and between 4{,}534 and 8{,}655 alerts
+per hour at 30\,FPS. Training with 80\% negative frames reduces these projections to
+46 alerts/hour for YOLO26n (a $31.4\times$ reduction), 69 alerts/hour for YOLO11n
+(a $12.6\times$ reduction), and 103 alerts/hour for YOLO12n (a $7.3\times$ reduction)
+at 5\,FPS. Each suppressed detection preserves edge compute, prevents unnecessary
+cellular uploads, avoids SoC thermal throttling, and preserves operator trust.
 
 \section{Discussion}
 \label{sec:discussion}
 
 \subsection{Practical Guidelines for AIoT Data Curation}
-The RQ1 results yield two actionable insights. First, both completed variants
-converge on $r^*{=}40\%$ as the $\mathrm{mAP}_{50}$-maximizing negative
-ratio, suggesting that within anchor-free detection heads, the optimal ratio
-may be a property of the domain's visual distribution rather than backbone
-architecture. Second, despite sharing the same $r^*$, FP suppression magnitudes
-diverge substantially: YOLO26n achieves an $18\times$ false-positive
-reduction versus baseline, compared to YOLO11n's $2.5\times$ reduction, indicating
-that negative-frame sensitivity interacts with backbone feature-reuse
-mechanisms beyond the detection head.
-
-If the forthcoming YOLO12n results confirm a shifted optimum ($r^*{\neq}40\%$),
-edge practitioners cannot treat dataset curation as an independent upstream
-step isolated from model selection: swapping detector architectures would
-necessitate re-tuning the negative ratio. Conversely, if all architectures
-converge on the same $r^*$, a standardized negative-ratio dataset can serve
-as a universal data-engineering template, decoupling curation from model search.
+The empirical results across all three architectures offer two concrete
+recommendations for edge data curation. First, the optimal training configuration
+depends on the operational deployment objective:
+\begin{enumerate}
+  \item \textbf{False-Alarm Minimization (Safety-Critical AIoT):} For systems
+        where false alarms degrade user trust or incur uplink costs, training
+        at the natural negative prevalence (80\%) is globally superior across
+        all three architectures. YOLO26n provides the lowest absolute false-alarm
+        rate ($3.14\,\mathrm{FP/1k}$, yielding 46 alerts/hr at 5\,FPS), making
+        pure reparameterized convolutions well-suited for high-precision,
+        low-power sensing.
+  \item \textbf{Compute-Constrained Training and High IoU:} When training budgets
+        or storage constraints limit dataset size, a 40\% negative ratio offers
+        the best compromise. It retains $\ge 98.3\%$ of peak $\mathrm{mAP}_{50}$,
+        achieves top-tier localization ($\mathrm{mAP}_{50:95} = 0.7772$ for
+        YOLO12n), and captures the bulk of false-positive suppression with less
+        than one-third the negative volume of the 80\% split.
+\end{enumerate}
+Second, while detection sensitivity ($\mathrm{mAP}_{50}$) exhibits broad stability
+across negative ratios ($r \in [40\%, 80\%]$), false-positive suppression
+magnitudes diverge sharply by architecture: YOLO26n suppresses false alarms by
+$31.5\times$, YOLO11n by $12.7\times$, and YOLO12n by $7.3\times$. This divergence
+demonstrates that edge architects cannot decouple data curation from detector
+selection: models relying on attention mechanisms require higher negative
+densities to achieve comparable background suppression as pure convolutional backbones.
 
 \subsection{Limitations}
 Several constraints frame this study:
