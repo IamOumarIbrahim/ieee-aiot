@@ -1,4 +1,4 @@
-﻿<#
+<#
 .SYNOPSIS
     run_rq2_and_populate_tables.ps1 - Automated Post-RQ1 Pipeline Runner.
 .DESCRIPTION
@@ -13,7 +13,7 @@ Write-Host "============================================================" -Foreg
 Write-Host "  IEEE AIoT 2026 - Post-RQ1 Auto Runner & Table Populator   " -ForegroundColor Cyan
 Write-Host "============================================================" -ForegroundColor Cyan
 
-& python "$RepoRoot\scripts\run_rq2_and_populate_tables.py"
+& python "$RepoRoot\scripts\run_rq2_curated_sweep.py"
 if ($LASTEXITCODE -ne 0) {
     Write-Error "Pipeline failed with exit code $LASTEXITCODE."
     exit $LASTEXITCODE

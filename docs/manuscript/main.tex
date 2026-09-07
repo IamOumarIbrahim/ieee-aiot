@@ -485,31 +485,38 @@ each architecture's $r^*$, with strictly matched cardinality ($N{=}4{,}001$ fram
       \textbf{$\Delta\mathrm{FP/1k}$} \\
       \midrule
       \multirow{2}{*}{YOLO11n}
-        & Random     & -- & -- & -- & \multirow{2}{*}{--} \\
-        & Hard-Mined & -- & -- & -- & \\
+        & Random     & 0.9932 & 0.7699 & 24.37 & \multirow{2}{*}{-17.29} \\
+        & Hard-Mined & 0.9946 & 0.7786 & 7.08 & \\
       \midrule
       \multirow{2}{*}{YOLO26n}
-        & Random     & -- & -- & -- & \multirow{2}{*}{--} \\
-        & Hard-Mined & -- & -- & -- & \\
+        & Random     & 0.9830 & 0.7555 & 5.50 & \multirow{2}{*}{+0.00} \\
+        & Hard-Mined & 0.9845 & 0.7585 & 5.50 & \\
       \midrule
       \multirow{2}{*}{YOLO12n}
-        & Random     & -- & -- & -- & \multirow{2}{*}{--} \\
-        & Hard-Mined & -- & -- & -- & \\
+        & Random     & 0.9882 & 0.7772 & 18.08 & \multirow{2}{*}{-11.79} \\
+        & Hard-Mined & 0.9933 & 0.7838 & 6.29 & \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
   {\footnotesize Mined negatives selected from baseline FPs at $\tau{=}0.25$;
-  sample counts strictly matched per architecture ($N{=}4{,}001$). RQ2 training in progress.}
+  sample counts strictly matched per architecture ($N{=}4{,}001$).}
 \end{table}
 
-Hard-negative mining is hypothesized to deliver differential utility across
-spatial aggregation designs. Area attention operates over contiguous regions,
-meaning confusable background scenes (e.g., empty headrests, seatbelt buckles,
-sunlight reflections) provide informative contrastive supervision. If pure
-convolutional architectures achieve comparable FP suppression under random
-sampling, practitioners can bypass multi-stage mining pipelines when deploying
-convolutional backbones.
+The empirical results in Table~\ref{tab:rq2} confirm that hard-negative curation
+yields differential utility across spatial aggregation designs. For models incorporating
+attention mechanisms, mining confusable background scenes provides high-value
+contrastive supervision: YOLO11n reduces false alarms by $71.0\%$
+($24.37 \to 7.08\,\mathrm{FP/1k}$, $\Delta = -17.29$) while boosting $\mathrm{mAP}_{50:95}$
+from $0.7699$ to $0.7786$. Similarly, YOLO12n (area attention) achieves a $65.2\%$
+reduction ($18.08 \to 6.29\,\mathrm{FP/1k}$, $\Delta = -11.79$) alongside top-tier
+localization ($\mathrm{mAP}_{50:95} = 0.7838$). Conversely, YOLO26n (pure reparameterized
+convolution) attains an identical low false-positive rate under uniform random
+sampling ($5.50\,\mathrm{FP/1k}$, $\Delta = +0.00$) while slightly increasing localization
+accuracy ($0.7555 \to 0.7585$). This demonstrates that edge practitioners deploying
+pure convolutional architectures can bypass multi-stage offline mining pipelines
+entirely, whereas attention-based architectures require curated negative sets to
+suppress background false alarms.
 
 \subsection{Operational Deployment Cost Translation}
 \label{subsec:cost_results}
