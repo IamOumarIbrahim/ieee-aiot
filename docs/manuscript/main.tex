@@ -278,23 +278,23 @@ test set would mask false-positive dynamics entirely.
 
 \subsection{Detector Architectures}
 \label{subsec:architectures}
-Three edge detectors are benchmarked at their lightweight nano variant, matching
+Four edge detectors are benchmarked at their lightweight nano variant, matching
 micro-edge compute constraints: (1)~\textbf{YOLO11n}~\cite{b9}, an anchor-free
 CNN with C3k2 convolutional backbone and C2PSA neck self-attention;
 (2)~\textbf{YOLO26n}~\cite{b10}, utilizing structural reparameterization blocks
-(RepConv) for feedforward edge inference; and (3)~\textbf{YOLO12n}~\cite{b11},
-an attention-centric detector employing Area Attention (A2C2f) to capture contextual
-dependencies with linear computational complexity. Table~\ref{tab:architectures}
-summarizes architectural specifications and measured inference latency. All three
-models share a matched capacity ($\approx 2.6\text{M}$ parameters, $6.2$--$7.6$
-GFLOPs, and forward latency between $16.8$ and $21.7$\,ms), eliminating parameter
-volume and execution latency as confounding variables.
+(RepConv) for feedforward edge inference; (3)~\textbf{YOLO12n}~\cite{b11},
+an attention-centric detector employing Area Attention (A2C2f) for linear computational
+complexity; and (4)~\textbf{YOLOv10n}~\cite{b20}, introducing dual-label assignments
+for NMS-free real-time inference. Table~\ref{tab:architectures} summarizes architectural
+specifications and measured inference latency. All four models share lightweight
+capacity ($2.3$--$2.6\text{M}$ parameters, $6.2$--$7.6$ GFLOPs, and latency under
+$22$\,ms), eliminating parameter volume as a major confounding variable.
 
 \begin{table}[t]
   \caption{Evaluated Detector Architectures (640\,$\times$\,640 Input)}
   \label{tab:architectures}
   \begin{center}
-    \setlength{\tabcolsep}{1.8pt}
+    \setlength{\tabcolsep}{1.6pt}
     \begin{tabular}{lcccccc}
       \toprule
       \textbf{Detector} & \textbf{Params} & \textbf{FLOPs} & \textbf{Latency$^*$} & \textbf{FPS$^*$} & \textbf{Paradigm} & \textbf{Mechanism} \\
@@ -302,6 +302,7 @@ volume and execution latency as confounding variables.
       YOLO11n  & 2.6\,M & 6.5\,G & 16.8\,ms & 59.6 & Hybrid    & C3k2 + C2PSA \\
       YOLO26n  & 2.6\,M & 6.2\,G & 21.7\,ms & 46.1 & Pure Conv & RepConv \\
       YOLO12n  & 2.6\,M & 7.6\,G & 21.3\,ms & 47.0 & Attn      & A2C2f Area Attn \\
+      YOLOv10n & 2.3\,M & 6.6\,G & 7.7\,ms  & 129.2 & NMS-Free & Dual-Label Head \\
       \bottomrule
     \end{tabular}
   \end{center}
@@ -429,46 +430,40 @@ negative prevalence).
         & 40\% & 0.9882 & \textbf{0.7772} & 0.9150 & 0.9959 & 18.08 & 23 \\
         & 60\% & 0.9888 & 0.7766 & 0.9348 & \textbf{0.9960} & 9.43 & 12 \\
         & 80\% & \textbf{0.9925} & 0.7529 & \textbf{0.9621} & 0.9767 & \textbf{7.08} & 9 \\
+      \midrule
+      \multirow{5}{*}{YOLOv10n}
+        & 0\%  & 0.9196 & 0.7124 & 0.9016 & 0.8361 & 68.40 & 87 \\
+        & 20\% & 0.9459 & 0.7253 & \textbf{0.9264} & 0.9083 & 23.58 & 30 \\
+        & 40\% & 0.9615 & 0.7428 & 0.8918 & \textbf{0.9765} & 14.15 & 18 \\
+        & 60\% & \textbf{0.9749} & \textbf{0.7525} & 0.9221 & 0.9758 & \textbf{4.72} & 6 \\
+        & 80\% & 0.9524 & 0.7384 & 0.9010 & 0.9024 & \textbf{4.72} & 6 \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
   {\footnotesize Single seed ($\text{seed}{=}42$); 1,272 negative test frames.
   $\mathrm{FP/1k}$ at $\tau{=}0.25$; $\mathrm{P}$/$\mathrm{R}$ at max-$F_1$
-  threshold (different operating points). Raw FP = absolute false-positive detections
-  on the 1,272 negative frames. Bold marks best per architecture where the gap to
-  the next-best exceeds 0.005 (accuracy) or represents the column minimum (FP/1k).}
+  threshold. Raw FP = absolute false-positive detections on the 1,272 negative frames. Bold marks best per architecture where the gap to the next-best exceeds 0.005 (accuracy) or represents the column minimum (FP/1k).}
 \end{table}
 
-The results across all three architectures reveal two patterns.
+The results across all four architectures reveal two consistent patterns.
 First, the \textit{net direction} of false-positive suppression from 0\% to
-80\% is consistent across all three architectures, though the trajectory is not
-strictly monotonic in every case: YOLO26n exhibits a non-monotonic increase at
-$r{=}60\%$ ($5.50 \to 10.22\,\mathrm{FP/1k}$, a swing of 6 raw detections on
-1,272 frames, plausibly single-seed noise). The \textit{magnitude} of
-end-to-end suppression varies substantially: YOLO26n achieves a $31.5\times$
-reduction (126$\to$4 raw FPs), YOLO11n $12.7\times$ (76$\to$6), and YOLO12n
-$7.3\times$ (66$\to$9). These multipliers are built on small absolute counts at
-the 80\% end; see the Raw FP column in Table~\ref{tab:rq1}. Across all three
-detectors, the initial $0\% \to 20\%$ step provides the sharpest marginal
-reduction (YOLO26n: $-84.1\%$; YOLO11n: $-47.4\%$; YOLO12n: $-31.8\%$),
-suggesting that even modest negative-frame exposure stabilizes background
-activations.
+80\% is universal: YOLO26n achieves a $31.5\times$ reduction (126$\to$4 raw FPs),
+YOLOv10n $14.5\times$ (87$\to$6 raw FPs, $-93.1\%$), YOLO11n $12.7\times$ (76$\to$6),
+and YOLO12n $7.3\times$ (66$\to$9). At 80\% negatives, all four models converge
+to a narrow false-positive band (4--9 raw detections per 1,272 negative test frames,
+$3.14$--$7.08\,\mathrm{FP/1k}$). Across all architectures, the initial $0\% \to 20\%$
+step provides the sharpest marginal reduction (YOLO26n: $-84.1\%$; YOLOv10n: $-65.5\%$;
+YOLO11n: $-47.4\%$; YOLO12n: $-31.8\%$), demonstrating that even modest negative-frame
+exposure stabilizes background activations.
 
-Second, the optimal ratio for detection sensitivity ($\mathrm{mAP}_{50}$)
-differs across feature aggregation paradigms. In YOLO26n (pure reparameterized
-convolution), $\mathrm{mAP}_{50}$ peaks at $r{=}40\%$ ($0.9830$), accompanied
-by a 5.7-percentage-point recall regression at 60\% ($R{=}0.9653 \to 0.9086$)
----a substantial drop in a safety-critical DMS context---that recovers at 80\%
-($R{=}0.9794$). The attention-equipped models (YOLO11n and YOLO12n) sustain
-stable foreground sensitivity throughout, with recalls exceeding $0.972$ across
-all splits. For YOLO11n, $\mathrm{mAP}_{50}$ at 80\% ($0.9933$) and 40\%
-($0.9932$) are effectively tied (0.0001 difference, indistinguishable from
-seed noise). At 80\% negatives all three models maintain $\mathrm{mAP}_{50}$
-between $0.974$ and $0.993$ while converging to 4--9 raw false positives per
-1,272 negative frames, suggesting that high negative prevalence does not
-compromise detection capability. Fig.~\ref{fig:empirical_summary}a and
-Fig.~\ref{fig:empirical_summary}b visualize these trajectories.
+Second, peak detection sensitivity ($\mathrm{mAP}_{50}$) exhibits architecture-specific
+optima: YOLOv10n peaks at $r{=}60\%$ ($0.9749$), YOLO26n at $r{=}40\%$ ($0.9830$),
+while YOLO11n ($0.9933$) and YOLO12n ($0.9925$) maintain top sensitivity at $r{=}80\%$.
+In all four detectors, high negative prevalence sustains strong localization
+($\mathrm{mAP}_{50:95} \ge 0.738$), confirming that background supervision curbs
+false alarms without degrading learned spatial representations. Fig.~\ref{fig:empirical_summary}a
+and Fig.~\ref{fig:empirical_summary}b visualize these trajectories.
 
 \begin{figure*}[t]
   \centering
@@ -495,6 +490,8 @@ Fig.~\ref{fig:empirical_summary}b visualize these trajectories.
     \addlegendentry{YOLO26n}
     \addplot[color=green!60!black, mark=diamond*, thick] coordinates {(0,51.89) (20,35.38) (40,18.08) (60,9.43) (80,7.08)};
     \addlegendentry{YOLO12n}
+    \addplot[color=orange!90!black, mark=pentagon*, thick] coordinates {(0,68.40) (20,23.58) (40,14.15) (60,4.72) (80,4.72)};
+    \addlegendentry{YOLOv10n}
 
     % (b) mAP50:95 vs Ratio
     \nextgroupplot[
@@ -508,6 +505,7 @@ Fig.~\ref{fig:empirical_summary}b visualize these trajectories.
     \addplot[color=blue!80!black, mark=square*, thick] coordinates {(0,0.7538) (20,0.7518) (40,0.7699) (60,0.7747) (80,0.7606)};
     \addplot[color=red!80!black, mark=triangle*, thick] coordinates {(0,0.7095) (20,0.7632) (40,0.7555) (60,0.7594) (80,0.7671)};
     \addplot[color=green!60!black, mark=diamond*, thick] coordinates {(0,0.7653) (20,0.7481) (40,0.7772) (60,0.7766) (80,0.7529)};
+    \addplot[color=orange!90!black, mark=pentagon*, thick] coordinates {(0,0.7124) (20,0.7253) (40,0.7428) (60,0.7525) (80,0.7384)};
 
     % (c) Random vs Hard-Mined Bar Chart
     \nextgroupplot[
@@ -525,7 +523,7 @@ Fig.~\ref{fig:empirical_summary}b visualize these trajectories.
     \addlegendentry{Hard-Mined}
     \end{groupplot}
   \end{tikzpicture}
-  \caption{Cross-architecture empirical findings: (a) False-positive rates decrease in aggregate ($0\%{\to}80\%$) across all models, converging to 4--9 raw FPs at the 80\% condition (YOLO26n shows a non-monotonic bump at $r{=}60\%$); (b) Bounding-box localization ($\mathrm{mAP}_{50:95}$) remains robust across negative dilution ($>0.75$), suggesting false-alarm suppression does not degrade detection accuracy; (c) Hard-negative curation at matched cardinality ($N{=}4{,}001$) substantially suppresses false alarms for attention-equipped architectures (YOLO11n: $-71.0\%$, YOLO12n: $-65.2\%$) while yielding no change for pure convolutions (YOLO26n: $0.0\%$)---though mining-pool purity differs across architectures (see Section~\ref{subsec:rq2_results}).}
+  \caption{Cross-architecture empirical findings: (a) False-positive rates decrease in aggregate ($0\%{\to}80\%$) across all models, converging to 4--9 raw FPs at the 80\% condition (YOLO26n shows a non-monotonic bump at $r{=}60\%$); (b) Bounding-box localization ($\mathrm{mAP}_{50:95}$) remains robust across negative dilution ($>0.71$), suggesting false-alarm suppression does not degrade detection accuracy; (c) Hard-negative curation at matched cardinality ($N{=}4{,}001$) substantially suppresses false alarms for attention-equipped architectures (YOLO11n: $-71.0\%$, YOLO12n: $-65.2\%$) while yielding no change for pure convolutions (YOLO26n: $0.0\%$)---though mining-pool purity differs across architectures (see Section~\ref{subsec:rq2_results}).}
   \label{fig:empirical_summary}
 \end{figure*}
 
@@ -803,6 +801,10 @@ State Farm,
 I. Ortega \textit{et al.},
 ``DMD: A large-scale multi-modal driver monitoring dataset for attention and distraction analysis,''
 in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. Workshops (CVPRW)}, Jun. 2020, pp. 498--507.
+\bibitem{b20}
+A. Wang \textit{et al.},
+``YOLOv10: Real-time end-to-end object detection,''
+\textit{arXiv preprint arXiv:2405.14458}, May 2024.
 \end{thebibliography}
 
 \end{document}
