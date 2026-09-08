@@ -1,4 +1,4 @@
-<h1 align="center">Negative Frames Aren't Architecture-Agnostic: A Cross-Detector Study for Edge Driver Monitoring</h1>
+<h1 align="center">Curate for Attention, Sample for Convolutions: Taming False Alarms in Continuous Edge AIoT Sensing</h1>
 
 <p align="center">
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-blue.svg" alt="License: Apache 2.0"></a>

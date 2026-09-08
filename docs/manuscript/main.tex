@@ -22,43 +22,36 @@
 \usepackage{array}
 \usepackage{url}
 \usepackage{flushend}
+\usepackage{pgfplots}
+\usepgfplotslibrary{groupplots}
+\pgfplotsset{compat=1.17}
 \def\BibTeX{{\rm B\kern-.05em{\sc i\kern-.025em b}\kern-.08em
     T\kern-.1667em\lower.7ex\hbox{E}\kern-.125emX}}
 \begin{document}
-\title{Negative Frames Are Not Architecture-Agnostic: A Cross-Detector
-       Study of Negative-Frame Configuration for Edge AIoT Driver Monitoring}
+\title{Curate for Attention, Sample for Convolutions: Taming False Alarms in Continuous Edge AIoT Sensing}
 \author{\IEEEauthorblockN{Anonymous Authors}
 \IEEEauthorblockA{Institution redacted for double-blind review}}
 \maketitle
 \begin{abstract}
-Deep learning object detectors deployed in continuous edge Artificial
-Intelligence of Things (AIoT) sensing systems (such as in-cabin driver
-monitoring systems) operate under extreme temporal background dominance:
-unannotated background-only frames constitute the vast majority of natural
-operational feeds ($\approx 81\%$ negative prevalence). While incorporating
-negative frames into training suppresses false alarms, existing literature
-evaluates negative-to-positive proportions for individual detector
-architectures in isolation. It remains unresolved whether an optimal
-negative-frame configuration transfers across architecturally distinct
-detection designs. This paper presents the first systematic, cross-architecture
-empirical study of negative-frame ratio sensitivity across three lightweight edge
-detectors with matched capacity ($\approx 2.6\text{M}$ parameters): YOLO11n
-(convolutional pyramid with partial self-attention), YOLO26n (pure
-reparameterized convolution), and YOLO12n (area-attention vision detector).
-Evaluating five nested ratio configurations (0\% to 80\% negatives) across three
-lightweight edge detectors on a 15,723-frame in-cabin driver-monitoring corpus,
-we establish that false-positive suppression and detection accuracy exhibit
-architecture-dependent dynamics. Negative-frame injection suppresses false alarms
-by up to $31.5\times$ (YOLO26n, from $99.06$ to $3.14\,\mathrm{FP/1k}$) and
-$12.7\times$ (YOLO11n, from $59.75$ to $4.72\,\mathrm{FP/1k}$), while maintaining
-high detection sensitivity ($\mathrm{mAP}_{50} \ge 0.973$ across all architectures
-at 80\% negatives). Pure reparameterized convolution demonstrates the strongest
-background discrimination under natural negative prevalence (80\%), whereas area
-attention and hybrid attention preserve superior localization precision
-($\mathrm{mAP}_{50:95} \ge 0.77$). We translate false positives per 1,000 frames
-into estimated operational nuisance alerts per hour ($\mathcal{A}_h$), demonstrating
-that training-data curation governs edge deployment viability independently of raw
-inference latency.
+Deep learning detectors deployed in continuous edge Artificial Intelligence of
+Things (AIoT) sensing face extreme temporal background dominance: over 80\% of
+operational frames contain no target objects. Training with negative
+(background-only) frames suppresses false alarms, yet prior work evaluates
+negative-to-positive ratios for single architectures in isolation, leaving open
+whether an optimal ratio transfers across designs. We present a
+cross-architecture empirical study of negative-frame ratio sensitivity across
+three matched-capacity ($\approx 2.6$\,M parameters) lightweight edge
+detectors---YOLO11n, YOLO26n, and YOLO12n---spanning convolutional, hybrid, and
+attention-centric feature aggregation. Sweeping five nested ratio configurations
+(0\%--80\% negatives) on a 15,723-frame in-cabin driver-monitoring corpus, we
+find that the direction of false-alarm suppression is consistent across all
+three architectures, but the magnitude and the optimal accuracy--suppression
+trade-off are architecture-dependent. At 80\% negatives, all three
+detectors converge to a narrow false-positive band (4--9 raw detections per
+1,272 negative test frames) despite up to 31.5$\times$ variation in their
+respective suppression trajectories---indicating that negative-frame prevalence,
+not architecture or inference latency, is the dominant lever for false-alarm
+control in edge AIoT deployments.
 \end{abstract}
 \begin{IEEEkeywords}
 Artificial Intelligence of Things (AIoT), edge intelligence, driver monitoring
@@ -83,11 +76,11 @@ but primarily by its ability to maintain discriminative silence on background
 frames. Detectors exhibiting non-trivial false-positive rates induce nuisance
 alerts that precipitate driver alert fatigue, waste edge compute cycles, trigger
 unwarranted cellular uplinks in distributed IoT fleets, and exhaust thermal
-envelopes on resource-constrained SoCs~\cite{b12,b13}.
+envelopes on resource-constrained systems-on-chip (SoCs)~\cite{b12,b13}.
 
 The established data-level mitigation injects background-only images into
 the training dataset. Practitioner heuristics recommend 0--10\% background
-imagery~\cite{b8}, while domain studies confirm that omitting negative frames
+imagery~\cite{b8}, while domain studies indicate that omitting negative frames
 degrades open-world false-alarm resilience~\cite{b5,b6}. However, prior studies
 evaluate negative-frame configurations for single detector architectures in
 isolation. It remains unknown whether the optimal negative ratio (or the
@@ -105,22 +98,24 @@ reparameterized feedforward convolution (YOLO26n), and area-attention
 (YOLO12n). Using a 15,723-frame corpus with 80.9\% natural negative
 prevalence, we address two research questions:
 \begin{itemize}
-  \item \textbf{RQ1 (Ratio Sensitivity):} Does the negative ratio maximizing
-        $\mathrm{mAP}$ and minimizing FP frequency differ across architectures,
-        or does a uniform optimum emerge?
-  \item \textbf{RQ2 (Curation Quality):} At each architecture's best ratio,
-        does substituting random negatives with hard-mined negatives yield
-        further gains at matched dataset cardinality?
+  \item \textbf{RQ1 (Ratio Sensitivity):} How does negative-frame scaling affect
+        false-positive suppression across architectures, and does the ratio
+        optimizing detection accuracy differ between convolutional and
+        attention-based designs?
+  \item \textbf{RQ2 (Curation Quality):} At a compute-efficient reference ratio
+        ($r_{\mathrm{ref}} = 40\%$), does substituting random negatives with
+        hard-mined negatives yield further gains at matched dataset cardinality?
 \end{itemize}
 
 Our contributions: (1)~the first cross-architecture negative-ratio sensitivity
 sweep across three matched-capacity edge detectors on a safety-critical AIoT
-dataset, establishing whether curation configurations transfer across
-paradigms; (2)~a controlled hard-negative mining protocol benchmarked against
-random sampling at matched cardinality, isolating sample entropy from volume;
-(3)~an analytical mapping from $\mathrm{FP/1k}$ to hourly nuisance alerts
-($\mathcal{A}_h$), demonstrating that data curation governs edge reliability
-independently of inference latency.
+dataset, examining whether curation configurations transfer across paradigms;
+(2)~a controlled hard-negative mining protocol benchmarked against random sampling
+at matched cardinality ($r_{\mathrm{ref}}{=}40\%$), isolating sample entropy from
+volume; (3)~an empirical latency benchmark ($16.8$--$21.7$\,ms) coupled with an
+analytical mapping from $\mathrm{FP/1k}$ to hourly nuisance alerts ($\mathcal{A}_h$),
+illustrating that data curation governs edge reliability independently of
+inference latency.
 
 \section{Related Work}
 \label{sec:related}
@@ -150,11 +145,11 @@ aggregation mechanisms while keeping parameter volume strictly controlled.
 While region-level negative sampling is well-studied, frame-level injection
 has received less attention. Beery \textit{et al.}~\cite{b5} showed models
 trained without empty backgrounds suffer generalization penalties; Felzenszwalb
-\textit{et al.}~\cite{b6} established that bootstrapping with background
+\textit{et al.}~\cite{b6} showed that bootstrapping with background
 scenes suppresses false detections; Gupta \textit{et al.}~\cite{b7} found
 scaling negative pairs to 1000:1 essential for human-object interaction. In
-DMS, datasets~\cite{b20,b21} emphasize positive diversity, but deployed nodes
-encounter vast negative stretches~\cite{b12,b19}. Prior work has not
+driver monitoring systems (DMS), datasets~\cite{b18,b19} emphasize positive diversity, but deployed nodes
+encounter vast negative stretches~\cite{b12,b17}. Prior work has not
 investigated whether the optimal negative ratio or hard-negative mining
 efficacy is architecture-invariant across edge detection designs.
 
@@ -169,10 +164,10 @@ captured by an edge camera sensor, where $X_t \in \mathbb{R}^{H \times W
 associated with ground-truth $Y_t = \{(c_k, b_k)\}_{k=1}^{K_t}$, with class
 $c_k \in \{1,\dots,C\}$ and bounding box $b_k \in [0,1]^4$. We partition
 frames into disjoint categories:
-\begin{align}
-  \mathcal{D}_{\mathrm{pos}} &= \{(X_t, Y_t) \mid K_t \geq 1\}, \label{eq:pos_def} \\
-  \mathcal{D}_{\mathrm{neg}} &= \{(X_t, \emptyset) \mid K_t = 0\}. \label{eq:neg_def}
-\end{align}
+\begin{equation}
+  \mathcal{D}_{\mathrm{pos}} = \{(X_t, Y_t) \mid K_t \geq 1\}, \quad
+  \mathcal{D}_{\mathrm{neg}} = \{(X_t, \emptyset) \mid K_t = 0\}. \label{eq:partitions}
+\end{equation}
 
 Given a detector parameterized by $\theta$, inference on frame $X$ yields
 predicted tuples $f_\theta(X) = \{(\hat{c}_j, \hat{b}_j, s_j)\}_{j=1}^M$.
@@ -195,12 +190,24 @@ In an operational edge deployment at frame rate $f_{\mathrm{FPS}}$ over one
 hour ($T_{\mathrm{hr}}{=}3600\,\text{s}$), with operational negative prevalence
 $p_{\mathrm{neg}} \in (0,1]$, the expected hourly nuisance alert rate is:
 \begin{equation}
-  \mathcal{A}_h = 3.6 \times f_{\mathrm{FPS}} \times p_{\mathrm{neg}} \times \mathrm{FP/1k}.
+  \mathcal{A}_h = \frac{T_{\mathrm{hr}}}{1000} \times f_{\mathrm{FPS}} \times p_{\mathrm{neg}} \times \mathrm{FP/1k} = 3.6 \, f_{\mathrm{FPS}} \, p_{\mathrm{neg}} \, \mathrm{FP/1k}.
   \label{eq:nuisance}
 \end{equation}
 Under unconditioned driving streams ($p_{\mathrm{neg}} \approx 0.809$),
 \eqref{eq:nuisance} models the real-world nuisance alert burden experienced by
-the driver and the edge communication stack.
+the driver and the edge communication stack. In our benchmark, operational
+false alarms ($\mathrm{FP/1k}$ and $\mathcal{A}_h$) are measured across all
+$1{,}272$ held-out negative test frames at operational confidence threshold
+$\tau = 0.25$ and non-maximum suppression (NMS) $\mathrm{IoU} = 0.70$, matching
+the hard-negative mining threshold in Section~\ref{subsec:configurations}.
+Detection accuracy metrics ($\mathrm{mAP}_{50}$ at $\mathrm{IoU}=0.50$, $\mathrm{mAP}_{50:95}$
+averaged over $\mathrm{IoU} \in [0.50, 0.95]$, precision $\mathrm{P}$, recall $\mathrm{R}$)
+are evaluated across the full test set over the confidence sweep, with
+$\mathrm{P}$ and $\mathrm{R}$ reported at the maximum-$F_1$ operating point.
+Note that $\mathrm{P}$ and $\mathrm{R}$ (maximum-$F_1$ threshold) and
+$\mathrm{FP/1k}$ (fixed $\tau{=}0.25$) reflect different operating points;
+both are reported in Table~\ref{tab:rq1} but should not be assumed to describe
+a single deployable configuration.
 
 \subsection{Architectural Loss Dynamics on Negative Frames}
 \label{subsec:loss_mechanics}
@@ -222,22 +229,24 @@ classification gradients on background regions arise solely from non-target
 patches within positive frames.
 
 Although the loss formulation is mathematically shared, the backpropagation
-pathways through the feature extractors differ fundamentally:
+pathways through the feature extractors differ, and we hypothesize this leads
+to architecture-dependent responses to negative-frame training:
 \begin{itemize}
   \item \textbf{YOLO26n (Pure Reparameterized CNN):} Negative gradients propagate
-        strictly through local convolutional receptive fields. Weight updates
-        must attenuate spatial filters that respond to high-frequency edge and
-        texture patterns resembling driver cues (e.g., steering wheel rims, seatbelt
-        fixtures).
+        strictly through local convolutional receptive fields. We hypothesize
+        that weight updates must attenuate spatial filters responding to
+        high-frequency edge and texture patterns resembling driver cues (e.g.,
+        steering wheel rims, seatbelt fixtures).
   \item \textbf{YOLO11n (Hybrid CNN-Attention):} Negative gradients update both
-        convolutional stages and neck self-attention projection weights (C2PSA),
-        enabling localized spatial modulation across prominent feature locations.
+        convolutional stages and neck self-attention projection weights (C2PSA).
+        This may enable broader spatial modulation across prominent feature
+        locations compared to purely local filters.
   \item \textbf{YOLO12n (Area Attention):} Negative gradients pass through Area
         Attention modules (A2C2f) that compute self-attention across partitioned
-        horizontal and vertical visual areas. By dynamically modulating receptive
-        fields over contiguous regions, area attention can suppress extended
-        background structures (such as car seat headrests or window reflections)
-        collectively rather than relying solely on local convolutional filters.
+        visual areas. We hypothesize that this dynamic receptive field may
+        suppress extended background structures (such as headrests or window
+        reflections) more holistically than local convolutions, though we have
+        not verified this via attention visualization or targeted ablation.
 \end{itemize}
 This architectural divergence motivates our inquiry into whether optimal
 negative-frame ratios and hard-negative mining efficacy differ across detection
@@ -249,25 +258,19 @@ Experiments utilize a 15,723-frame in-cabin DMS corpus captured across diverse
 driver subjects, cabin illumination conditions, vehicle cabins, and camera
 viewpoints. All video recordings were captured under an institutional
 vehicle-safety research protocol with informed written consent; identifying
-metadata has been de-identified. The dataset contains 3,001 positive frames
-with annotated driver cues across four safety-critical categories:
-\begin{enumerate}
-  \item \texttt{phone\_use}: driver holding a mobile device to the ear or
-        interacting manually.
-  \item \texttt{drinking}: driver holding a beverage container near the mouth.
-  \item \texttt{yawning}: driver exhibiting observable fatigue or yawning state.
-  \item \texttt{hand\_over\_mouth}: driver covering mouth or face, occluding
-        critical features.
-\end{enumerate}
-The remaining 12,722 frames contain no target cues, yielding a natural negative
-prevalence of 80.9\%. All frames are partitioned using a stratified 80/10/10
-split ($\text{seed}{=}42$):
-\begin{itemize}
-  \item \textbf{Validation and Test:} 1,572 frames each (300 pos, 1,272 neg;
-        80.9\% negative prevalence).
-  \item \textbf{Training Universe:} 2,401 positive frames (stratified across
-        all four categories); candidate pool of 10,178 negatives.
-\end{itemize}
+metadata has been de-identified. The dataset contains 3,001 positive frames with annotated driver cues across
+four safety-critical categories: (1)~\texttt{phone\_use} ($2{,}437$ frames,
+$81.2\%$, manual device interaction or holding to ear), (2)~\texttt{drinking}
+($264$ frames, $8.8\%$, beverage container near mouth), (3)~\texttt{yawning}
+($159$ frames, $5.3\%$, observable fatigue), and (4)~\texttt{hand\_over\_mouth}
+($141$ frames, $4.7\%$, facial occlusion). All positive frames are annotated
+with tight 2D bounding boxes enclosing target cues and quality-verified by
+consensus review (single primary cue per positive frame). The remaining 12,722
+frames contain no target cues, yielding a natural negative prevalence of 80.9\%.
+All frames are partitioned using a stratified 80/10/10 split ($\text{seed}{=}42$):
+validation and test benchmarks contain 1,572 frames each (300 pos, 1,272 neg;
+80.9\% negative prevalence), while the training universe comprises 2,401 positive
+frames (stratified across all four categories) and a candidate pool of 10,178 negatives.
 Validation and test benchmarks are held strictly fixed across all conditions.
 Evaluating on a natural-distribution test set preserves the background-dominant
 reality necessary to quantify $\mathrm{FP/1k}$; an artificially rebalanced
@@ -275,36 +278,35 @@ test set would mask false-positive dynamics entirely.
 
 \subsection{Detector Architectures}
 \label{subsec:architectures}
-Three edge detectors are benchmarked at their lightweight nano variant,
-matching micro-edge compute constraints:
-\begin{itemize}
-  \item \textbf{YOLO11n}~\cite{b9}: Anchor-free CNN with C3k2 convolutional
-        backbone and C2PSA neck self-attention.
-  \item \textbf{YOLO26n}~\cite{b10}: Next-generation YOLO utilizing structural
-        reparameterization blocks (RepConv) for low-latency edge inference.
-  \item \textbf{YOLO12n}~\cite{b11}: Attention-centric detector employing Area
-        Attention (A2C2f) to capture contextual dependencies with linear
-        computational complexity.
-\end{itemize}
-Table~\ref{tab:architectures} summarizes architectural specifications. All
-three models share a compact capacity ($\approx 2.6\text{M}$ parameters and
-$6.2$--$7.6$ GFLOPs), eliminating parameter volume as a confounding variable.
+Three edge detectors are benchmarked at their lightweight nano variant, matching
+micro-edge compute constraints: (1)~\textbf{YOLO11n}~\cite{b9}, an anchor-free
+CNN with C3k2 convolutional backbone and C2PSA neck self-attention;
+(2)~\textbf{YOLO26n}~\cite{b10}, utilizing structural reparameterization blocks
+(RepConv) for feedforward edge inference; and (3)~\textbf{YOLO12n}~\cite{b11},
+an attention-centric detector employing Area Attention (A2C2f) to capture contextual
+dependencies with linear computational complexity. Table~\ref{tab:architectures}
+summarizes architectural specifications and measured inference latency. All three
+models share a matched capacity ($\approx 2.6\text{M}$ parameters, $6.2$--$7.6$
+GFLOPs, and forward latency between $16.8$ and $21.7$\,ms), eliminating parameter
+volume and execution latency as confounding variables.
 
 \begin{table}[t]
   \caption{Evaluated Detector Architectures (640\,$\times$\,640 Input)}
   \label{tab:architectures}
   \begin{center}
-    \setlength{\tabcolsep}{3.5pt}
-    \begin{tabular}{lrrcc}
+    \setlength{\tabcolsep}{1.8pt}
+    \begin{tabular}{lcccccc}
       \toprule
-      \textbf{Detector} & \textbf{Params} & \textbf{FLOPs} & \textbf{Paradigm} & \textbf{Spatial Mechanism} \\
+      \textbf{Detector} & \textbf{Params} & \textbf{FLOPs} & \textbf{Latency$^*$} & \textbf{FPS$^*$} & \textbf{Paradigm} & \textbf{Mechanism} \\
       \midrule
-      YOLO11n  & 2.6\,M &  6.5\,G & Hybrid CNN      & C3k2 + C2PSA Attention \\
-      YOLO26n  & 2.6\,M &  6.2\,G & Pure Conv       & Reparameterized Conv   \\
-      YOLO12n  & 2.6\,M &  7.6\,G & Area Attention  & A2C2f Area Attention   \\
+      YOLO11n  & 2.6\,M & 6.5\,G & 16.8\,ms & 59.6 & Hybrid    & C3k2 + C2PSA \\
+      YOLO26n  & 2.6\,M & 6.2\,G & 21.7\,ms & 46.1 & Pure Conv & RepConv \\
+      YOLO12n  & 2.6\,M & 7.6\,G & 21.3\,ms & 47.0 & Attn      & A2C2f Area Attn \\
       \bottomrule
     \end{tabular}
   \end{center}
+  \vspace{-2pt}
+  {\footnotesize $^*$Latency and throughput measured on NVIDIA RTX 4060 Laptop GPU (PyTorch, batch=1, 640\,$\times$\,640, averaged over 200 iterations after 50 warmups).}
 \end{table}
 
 \subsection{Experimental Configurations}
@@ -314,14 +316,11 @@ $6.2$--$7.6$ GFLOPs), eliminating parameter volume as a confounding variable.
 Five training sets hold the positive core fixed at
 $|\mathcal{D}_{\mathrm{pos}}| = 2{,}401$ frames and sample strictly nested
 subsets of negative frames at uniform arithmetic 20\%-point increments:
-\begin{itemize}
-  \item \textbf{0\% Negative:} 2,401 pos, 0 neg (2,401 total).
-  \item \textbf{20\% Negative:} 2,401 pos, 600 neg (3,001 total).
-  \item \textbf{40\% Negative:} 2,401 pos, 1,600 neg (4,001 total).
-  \item \textbf{60\% Negative:} 2,401 pos, 3,602 neg (6,003 total).
-  \item \textbf{80\% Negative:} 2,401 pos, 9,604 neg (12,005 total, natural distribution).
-\end{itemize}
-The negative subsets are strictly nested:
+0\% (2,401 total; 0 neg), 20\% (3,001 total; 600 neg), 40\% (4,001 total;
+1,600 neg), 60\% (6,003 total; 3,602 neg), and 80\% (12,005 total; 9,604 neg).
+The 80\% condition uses 9,604 of the 10,178 available training negatives; the
+remaining 574 are excluded to maintain exact 20-percentage-point arithmetic
+stepping. The negative subsets are strictly nested:
 $\mathcal{D}_{\mathrm{neg}}^{(0\%)} \subset \mathcal{D}_{\mathrm{neg}}^{(20\%)}
 \subset \cdots \subset \mathcal{D}_{\mathrm{neg}}^{(80\%)}$ using a
 deterministic random seed ($\text{seed}{=}42$). Across 3 architectures and 5
@@ -331,15 +330,13 @@ ratio levels, Axis~1 encompasses $3 \times 5 = 15$ training runs.
 For each architecture, a baseline detector $f_{\theta_0}$ trained on
 positive-only data runs inference across the 10,178-frame negative candidate
 pool. Frames yielding false positives above $\tau{=}0.25$ are ranked by
-maximum confidence $s_{\max}(X)$, and the top $N_{\mathrm{target}}^{(r^*)}$
+maximum confidence $s_{\max}(X)$, and the top $N_{\mathrm{target}}$
 frames form the hard-mined set (backfilled deterministically from remaining
-negatives if needed). Training set cardinality is strictly matched between
-random and curated conditions per~\eqref{eq:cardinality}:
-\begin{equation}
-  |\mathcal{D}_{\mathrm{train,hard}}^{(r^*)}| = |\mathcal{D}_{\mathrm{train,rand}}^{(r^*)}|
-  = 2{,}401 + N_{\mathrm{target}}^{(r^*)}.
-  \label{eq:cardinality}
-\end{equation}
+negatives if needed). We evaluate hard-negative curation at the compute-efficient
+reference ratio $r_{\mathrm{ref}} = 40\%$ ($N_{\mathrm{target}} = 1{,}600$ negatives),
+which represents the compute-efficient compromise identified in Section~\ref{sec:discussion}.
+Training set cardinality is strictly matched between random and curated conditions:
+$|\mathcal{D}_{\mathrm{train,hard}}^{(40\%)}| = |\mathcal{D}_{\mathrm{train,rand}}^{(40\%)}| = 2{,}401 + 1{,}600 = 4{,}001\,\text{frames}$.
 Axis~2 adds $3 \times 2 = 6$ runs, establishing a total of \textbf{21 planned runs}.
 
 \subsection{Training Protocol}
@@ -347,53 +344,50 @@ Axis~2 adds $3 \times 2 = 6$ runs, establishing a total of \textbf{21 planned ru
 All models fine-tune from COCO-pretrained checkpoints at 640$\times$640,
 $\text{seed}{=}42$. Training uses FP32 precision to circumvent a Windows cuBLAS
 FP16 driver fault on Ada Lovelace GPUs. Table~\ref{tab:training} documents the
-frozen configuration. Training hardware: NVIDIA GeForce RTX 4060 Laptop GPU (8\,GB VRAM).
+frozen configuration (held identical across all models to isolate spatial
+aggregation). Training hardware: NVIDIA GeForce RTX 4060 Laptop GPU (8\,GB VRAM).
 Target deployment hardware: NVIDIA Jetson Orin Nano (8\,GB).
 
 \begin{table}[t]
-  \caption{Frozen Training Configuration (RTX 4060 8\,GB VRAM)}
+  \caption{Unified Frozen Training Hyperparameters}
   \label{tab:training}
   \begin{center}
     \setlength{\tabcolsep}{5pt}
-    \begin{tabular}{lccc}
+    \begin{tabular}{lc}
       \toprule
-      \textbf{Hyperparameter}     & \textbf{YOLO11n} & \textbf{YOLO26n} & \textbf{YOLO12n} \\
+      \textbf{Hyperparameter} & \textbf{Frozen Configuration} \\
       \midrule
-      Physical Batch Size         & 16       & 16       & 16               \\
-      Effective Batch Size        & 16       & 16       & 16               \\
-      Training Epochs             & 100      & 100      & 100              \\
-      Optimizer                   & \texttt{auto} & \texttt{auto} & \texttt{auto} \\
-      Weight Decay                & 0.0005   & 0.0005   & 0.0005           \\
-      Augmentation Cooldown       & Epoch 90 & Epoch 90 & Epoch 90         \\
-      Fixed Random Seed           & 42       & 42       & 42               \\
-      Precision                   & FP32     & FP32     & FP32             \\
+      Input Resolution & 640\,$\times$\,640 (FP32 precision) \\
+      Physical / Effective Batch & 16 / 16 (no accumulation) \\
+      Training Epochs & 100 epochs \\
+      Optimizer & AdamW ($\mathrm{lr}_0{=}0.00125$) \\
+      Weight Decay & 0.0005 \\
+      Augmentation Cooldown & Epoch 90 (\texttt{close\_mosaic=10}) \\
+      Fixed Random Seed & 42 \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
-  {\footnotesize Hyperparameter parity across all three models isolates the
-  architectural feature aggregation mechanism as the sole independent variable.}
+  {\footnotesize Parity across models isolates feature aggregation design.}
 \end{table}
 
-To guarantee reproducible, hardware-isolated execution:
-\begin{enumerate}
-  \item \textbf{Batch Execution:} All models execute at physical batch 16,
-        requiring no gradient accumulation.
-  \item \textbf{Precision:} All models train under FP32
-        (\texttt{amp=False}) to circumvent a cuBLAS driver fault
-        (\texttt{CUBLAS\_STATUS\_INTERNAL\_ERROR}) encountered in PyTorch 2.6.0
-        on Windows during FP16 GEMM operations on Ada Lovelace architectures.
-  \item \textbf{Augmentation:} Mosaic augmentation is disabled for the final 10
-        epochs (\texttt{close\_mosaic=10}) across all detectors.
-  \item \textbf{Hyperparameter Parity:} All optimizer parameters, learning rate
-        schedules, and augmentation settings are held invariant across splits.
-\end{enumerate}
+To guarantee reproducible execution: (1)~\textbf{Batch Execution:}
+physical batch 16 without gradient accumulation; (2)~\textbf{Precision:}
+FP32 (\texttt{amp=False}) avoids cuBLAS GEMM faults on Windows Ada Lovelace GPUs;
+(3)~\textbf{Augmentation:} mosaic augmentation is disabled for the final 10 epochs
+(\texttt{close\_mosaic=10}); (4)~\textbf{Parity:} optimizer schedules and augmentations
+are held invariant across splits.
 
-\noindent\textbf{Claims Boundary:} Each configuration uses a single
-deterministic seed ($\text{seed}{=}42$); comparisons represent point estimates.
-We report effect magnitudes and cross-architecture trend consistency, explicitly
-avoiding inferential hypothesis testing where repeated-seed distributions are
-absent.
+\noindent\textbf{Training Compute Note:} All ratio conditions train for a fixed
+100 epochs regardless of dataset size. Because dataset sizes range from 2,401
+frames ($r{=}0\%$) to 12,005 frames ($r{=}80\%$), higher-ratio models see
+approximately $5\times$ more total gradient updates. This design choice---standard
+in transfer-learning practice where epoch count, not step count, is the natural
+budget unit---means that the observed ratio effects co-vary with total training
+compute. We cannot separate the contribution of negative-frame content from
+additional optimization steps within this protocol; ratio-effect claims should
+therefore be interpreted as correlational. A step-matched ablation is left for
+future work.
 
 \section{Experimental Results}
 \label{sec:results}
@@ -408,115 +402,201 @@ negative prevalence).
   \caption{Negative-Frame Ratio Sweep across Architectures (RQ1)}
   \label{tab:rq1}
   \begin{center}
-    \setlength{\tabcolsep}{3.5pt}
-    \begin{tabular}{llccccc}
+    \setlength{\tabcolsep}{2.5pt}
+    \begin{tabular}{llcccccc}
       \toprule
-      \textbf{Detector} & \textbf{$r$} & \textbf{$\mathrm{mAP}_{50}$} &
+      \textbf{Det.} & \textbf{$r$} & \textbf{$\mathrm{mAP}_{50}$} &
       \textbf{$\mathrm{mAP}_{50:95}$} & \textbf{$\mathrm{P}$} & \textbf{$\mathrm{R}$} &
-      \textbf{$\mathrm{FP/1k}$} \\
+      \textbf{$\mathrm{FP/1k}$} & \textbf{Raw FP} \\
       \midrule
       \multirow{5}{*}{YOLO11n}
-        & 0\%  & 0.9769 & 0.7538 & 0.8806 & 0.9741 & 59.75 \\
-        & 20\% & 0.9878 & 0.7518 & 0.9202 & 0.9728 & 31.45 \\
-        & 40\% & 0.9932 & 0.7699 & 0.9376 & 0.9839 & 24.37 \\
-        & 60\% & 0.9881 & \textbf{0.7747} & 0.9248 & \textbf{0.9920} & 12.58 \\
-        & 80\% & \textbf{0.9933} & 0.7606 & \textbf{0.9644} & 0.9766 & \textbf{4.72} \\
+        & 0\%  & 0.9769 & 0.7538 & 0.8806 & 0.9741 & 59.75 & 76 \\
+        & 20\% & 0.9878 & 0.7518 & 0.9202 & 0.9728 & 31.45 & 40 \\
+        & 40\% & 0.9932 & 0.7699 & 0.9376 & 0.9839 & 24.37 & 31 \\
+        & 60\% & 0.9881 & \textbf{0.7747} & 0.9248 & \textbf{0.9920} & 12.58 & 16 \\
+        & 80\% & 0.9933 & 0.7606 & \textbf{0.9644} & 0.9766 & \textbf{4.72} & 6 \\
       \midrule
       \multirow{5}{*}{YOLO26n}
-        & 0\%  & 0.9176 & 0.7095 & 0.8649 & 0.8988 & 99.06 \\
-        & 20\% & 0.9744 & 0.7632 & 0.9390 & 0.9785 & 15.72 \\
-        & 40\% & \textbf{0.9830} & 0.7555 & 0.9411 & 0.9653 & 5.50 \\
-        & 60\% & 0.9660 & 0.7594 & \textbf{0.9587} & 0.9086 & 10.22 \\
-        & 80\% & 0.9736 & \textbf{0.7671} & 0.9217 & \textbf{0.9794} & \textbf{3.14} \\
+        & 0\%  & 0.9176 & 0.7095 & 0.8649 & 0.8988 & 99.06 & 126 \\
+        & 20\% & 0.9744 & 0.7632 & 0.9390 & 0.9785 & 15.72 & 20 \\
+        & 40\% & \textbf{0.9830} & 0.7555 & 0.9411 & 0.9653 & 5.50 & 7 \\
+        & 60\% & 0.9660 & 0.7594 & \textbf{0.9587} & 0.9086 & 10.22 & 13 \\
+        & 80\% & 0.9736 & \textbf{0.7671} & 0.9217 & \textbf{0.9794} & \textbf{3.14} & 4 \\
       \midrule
       \multirow{5}{*}{YOLO12n}
-        & 0\%  & 0.9899 & 0.7653 & 0.9096 & 0.9840 & 51.89 \\
-        & 20\% & 0.9830 & 0.7481 & 0.9147 & 0.9837 & 35.38 \\
-        & 40\% & 0.9882 & \textbf{0.7772} & 0.9150 & 0.9959 & 18.08 \\
-        & 60\% & 0.9888 & 0.7766 & 0.9348 & \textbf{0.9960} & 9.43 \\
-        & 80\% & \textbf{0.9925} & 0.7529 & \textbf{0.9621} & 0.9767 & \textbf{7.08} \\
+        & 0\%  & 0.9899 & 0.7653 & 0.9096 & 0.9840 & 51.89 & 66 \\
+        & 20\% & 0.9830 & 0.7481 & 0.9147 & 0.9837 & 35.38 & 45 \\
+        & 40\% & 0.9882 & \textbf{0.7772} & 0.9150 & 0.9959 & 18.08 & 23 \\
+        & 60\% & 0.9888 & 0.7766 & 0.9348 & \textbf{0.9960} & 9.43 & 12 \\
+        & 80\% & \textbf{0.9925} & 0.7529 & \textbf{0.9621} & 0.9767 & \textbf{7.08} & 9 \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
-  {\footnotesize Single seed ($\text{seed}{=}42$); test set contains 80.9\% negative frames;
-  best result per architecture in bold.}
+  {\footnotesize Single seed ($\text{seed}{=}42$); 1,272 negative test frames.
+  $\mathrm{FP/1k}$ at $\tau{=}0.25$; $\mathrm{P}$/$\mathrm{R}$ at max-$F_1$
+  threshold (different operating points). Raw FP = absolute false-positive detections
+  on the 1,272 negative frames. Bold marks best per architecture where the gap to
+  the next-best exceeds 0.005 (accuracy) or represents the column minimum (FP/1k).}
 \end{table}
 
-The empirical results across all three architectures establish two key behaviors.
-First, false-positive rates drop monotonically as the negative training fraction
-increases toward the natural 80\% operational prevalence. YOLO11n achieves a
-$12.7\times$ reduction ($59.75 \to 4.72\,\mathrm{FP/1k}$), YOLO12n achieves a
-$7.3\times$ reduction ($51.89 \to 7.08\,\mathrm{FP/1k}$), and YOLO26n achieves a
-$31.5\times$ reduction ($99.06 \to 3.14\,\mathrm{FP/1k}$), recording the lowest
-absolute false-positive rate across all tested configurations. Across all three
-detectors, the initial $0\% \to 20\%$ injection step provides the sharpest
-marginal reduction in false alarms (YOLO26n: $-84.1\%$; YOLO11n: $-47.4\%$;
-YOLO12n: $-31.8\%$), demonstrating that even modest negative-frame supervision
-stabilizes background activations.
+The results across all three architectures reveal two patterns.
+First, the \textit{net direction} of false-positive suppression from 0\% to
+80\% is consistent across all three architectures, though the trajectory is not
+strictly monotonic in every case: YOLO26n exhibits a non-monotonic increase at
+$r{=}60\%$ ($5.50 \to 10.22\,\mathrm{FP/1k}$, a swing of 6 raw detections on
+1,272 frames, plausibly single-seed noise). The \textit{magnitude} of
+end-to-end suppression varies substantially: YOLO26n achieves a $31.5\times$
+reduction (126$\to$4 raw FPs), YOLO11n $12.7\times$ (76$\to$6), and YOLO12n
+$7.3\times$ (66$\to$9). These multipliers are built on small absolute counts at
+the 80\% end; see the Raw FP column in Table~\ref{tab:rq1}. Across all three
+detectors, the initial $0\% \to 20\%$ step provides the sharpest marginal
+reduction (YOLO26n: $-84.1\%$; YOLO11n: $-47.4\%$; YOLO12n: $-31.8\%$),
+suggesting that even modest negative-frame exposure stabilizes background
+activations.
 
-Second, detection sensitivity and bounding-box precision respond differently
-to negative dilution across feature aggregation paradigms. In YOLO26n (pure
-reparameterized convolution), $\mathrm{mAP}_{50}$ peaks at $r{=}40\%$ ($0.9830$),
-with a minor recall dip at 60\% ($R{=}0.9086$) that recovers at 80\% ($R{=}0.9794$,
-$\mathrm{mAP}_{50:95}{=}0.7671$). In contrast, the attention-equipped models
-(YOLO11n and YOLO12n) sustain stable foreground sensitivity throughout, with
-recalls exceeding $0.972$ across all splits and peaking near 0.996 at 60\%. For
-strict bounding-box localization ($\mathrm{mAP}_{50:95}$), YOLO12n attains the
-highest overall precision at 40\% ($0.7772$), while YOLO11n peaks at 60\%
-($0.7747$). At 80\% negatives, all three models maintain $\mathrm{mAP}_{50} \ge 0.973$
-while minimizing false alarms, demonstrating that natural negative prevalence
-does not compromise detection capability.
+Second, the optimal ratio for detection sensitivity ($\mathrm{mAP}_{50}$)
+differs across feature aggregation paradigms. In YOLO26n (pure reparameterized
+convolution), $\mathrm{mAP}_{50}$ peaks at $r{=}40\%$ ($0.9830$), accompanied
+by a 5.7-percentage-point recall regression at 60\% ($R{=}0.9653 \to 0.9086$)
+---a substantial drop in a safety-critical DMS context---that recovers at 80\%
+($R{=}0.9794$). The attention-equipped models (YOLO11n and YOLO12n) sustain
+stable foreground sensitivity throughout, with recalls exceeding $0.972$ across
+all splits. For YOLO11n, $\mathrm{mAP}_{50}$ at 80\% ($0.9933$) and 40\%
+($0.9932$) are effectively tied (0.0001 difference, indistinguishable from
+seed noise). At 80\% negatives all three models maintain $\mathrm{mAP}_{50}$
+between $0.974$ and $0.993$ while converging to 4--9 raw false positives per
+1,272 negative frames, suggesting that high negative prevalence does not
+compromise detection capability. Fig.~\ref{fig:empirical_summary}a and
+Fig.~\ref{fig:empirical_summary}b visualize these trajectories.
+
+\begin{figure*}[t]
+  \centering
+  \begin{tikzpicture}
+    \begin{groupplot}[
+      group style={group size=3 by 1, horizontal sep=1.2cm},
+      width=5.7cm, height=3.2cm,
+      tick label style={font=\footnotesize},
+      label style={font=\small},
+      grid=major, grid style={gray!25}
+    ]
+    % (a) FP/1k vs Ratio
+    \nextgroupplot[
+      title={(a) FP/1k vs. Negative Ratio ($r$)},
+      xlabel={Negative Ratio $r$ (\%)},
+      ylabel={FP/1k Frames},
+      xmin=-2, xmax=85, ymin=0, ymax=105,
+      xtick={0,20,40,60,80},
+      legend style={at={(0.95,0.95)},anchor=north east,font=\scriptsize,fill=white,fill opacity=0.85}
+    ]
+    \addplot[color=blue!80!black, mark=square*, thick] coordinates {(0,59.75) (20,31.45) (40,24.37) (60,12.58) (80,4.72)};
+    \addlegendentry{YOLO11n}
+    \addplot[color=red!80!black, mark=triangle*, thick] coordinates {(0,99.06) (20,15.72) (40,5.50) (60,10.22) (80,3.14)};
+    \addlegendentry{YOLO26n}
+    \addplot[color=green!60!black, mark=diamond*, thick] coordinates {(0,51.89) (20,35.38) (40,18.08) (60,9.43) (80,7.08)};
+    \addlegendentry{YOLO12n}
+
+    % (b) mAP50:95 vs Ratio
+    \nextgroupplot[
+      title={(b) Localization vs. Ratio ($r$)},
+      xlabel={Negative Ratio $r$ (\%)},
+      ylabel={$\mathrm{mAP}_{50:95}$},
+      xmin=-2, xmax=85, ymin=0.69, ymax=0.79,
+      xtick={0,20,40,60,80},
+      ytick={0.70,0.72,0.74,0.76,0.78},
+    ]
+    \addplot[color=blue!80!black, mark=square*, thick] coordinates {(0,0.7538) (20,0.7518) (40,0.7699) (60,0.7747) (80,0.7606)};
+    \addplot[color=red!80!black, mark=triangle*, thick] coordinates {(0,0.7095) (20,0.7632) (40,0.7555) (60,0.7594) (80,0.7671)};
+    \addplot[color=green!60!black, mark=diamond*, thick] coordinates {(0,0.7653) (20,0.7481) (40,0.7772) (60,0.7766) (80,0.7529)};
+
+    % (c) Random vs Hard-Mined Bar Chart
+    \nextgroupplot[
+      title={(c) Curation Strategy (RQ2)},
+      ybar=2pt, bar width=7pt,
+      ylabel={FP/1k Frames},
+      symbolic x coords={YOLO11n, YOLO26n, YOLO12n},
+      xtick=data,
+      ymin=0, ymax=28,
+      legend style={at={(0.95,0.95)},anchor=north east,font=\scriptsize,fill=white,fill opacity=0.85}
+    ]
+    \addplot[fill=blue!40, draw=blue!80!black] coordinates {(YOLO11n,24.37) (YOLO26n,5.50) (YOLO12n,18.08)};
+    \addlegendentry{Random}
+    \addplot[fill=red!50, draw=red!80!black] coordinates {(YOLO11n,7.08) (YOLO26n,5.50) (YOLO12n,6.29)};
+    \addlegendentry{Hard-Mined}
+    \end{groupplot}
+  \end{tikzpicture}
+  \caption{Cross-architecture empirical findings: (a) False-positive rates decrease in aggregate ($0\%{\to}80\%$) across all models, converging to 4--9 raw FPs at the 80\% condition (YOLO26n shows a non-monotonic bump at $r{=}60\%$); (b) Bounding-box localization ($\mathrm{mAP}_{50:95}$) remains robust across negative dilution ($>0.75$), suggesting false-alarm suppression does not degrade detection accuracy; (c) Hard-negative curation at matched cardinality ($N{=}4{,}001$) substantially suppresses false alarms for attention-equipped architectures (YOLO11n: $-71.0\%$, YOLO12n: $-65.2\%$) while yielding no change for pure convolutions (YOLO26n: $0.0\%$)---though mining-pool purity differs across architectures (see Section~\ref{subsec:rq2_results}).}
+  \label{fig:empirical_summary}
+\end{figure*}
 
 \subsection{Hard-Negative Curation vs.\ Random Sampling (RQ2)}
 \label{subsec:rq2_results}
-Table~\ref{tab:rq2} benchmarks hard-negative mining against random sampling at
-each architecture's $r^*$, with strictly matched cardinality ($N{=}4{,}001$ frames).
+Table~\ref{tab:rq2} benchmarks hard-negative mining against uniform random sampling
+at the compute-efficient reference ratio $r_{\mathrm{ref}} = 40\%$, with strictly
+matched cardinality ($N{=}4{,}001$ frames).
 
 \begin{table}[t]
-  \caption{Hard-Negative Mining vs.\ Random Sampling at Matched Cardinality (RQ2)}
+  \caption{Hard-Negative Mining vs.\ Random Sampling at Matched Cardinality ($r_{\mathrm{ref}}{=}40\%$, RQ2)}
   \label{tab:rq2}
   \begin{center}
-    \setlength{\tabcolsep}{4pt}
-    \begin{tabular}{llcccc}
+    \setlength{\tabcolsep}{1.6pt}
+    \begin{tabular}{llcccccc}
       \toprule
-      \textbf{Detector} & \textbf{Curation} & \textbf{$\mathrm{mAP}_{50}$} &
+      \textbf{Det.} & \textbf{Curation} & \textbf{$\mathrm{mAP}_{50}$} &
       \textbf{$\mathrm{mAP}_{50:95}$} & \textbf{$\mathrm{FP/1k}$} &
-      \textbf{$\Delta\mathrm{FP/1k}$} \\
+      \textbf{$\%\,\Delta$} & \textbf{Mined} & \textbf{Fill} \\
       \midrule
       \multirow{2}{*}{YOLO11n}
-        & Random     & 0.9932 & 0.7699 & 24.37 & \multirow{2}{*}{-17.29} \\
-        & Hard-Mined & 0.9946 & 0.7786 & 7.08 & \\
+        & Random     & 0.9932 & 0.7699 & 24.37 & \multirow{2}{*}{-71.0\%} & \multirow{2}{*}{596} & \multirow{2}{*}{1004} \\
+        & Hard-Mined & 0.9946 & 0.7786 & 7.08 & & & \\
       \midrule
       \multirow{2}{*}{YOLO26n}
-        & Random     & 0.9830 & 0.7555 & 5.50 & \multirow{2}{*}{+0.00} \\
-        & Hard-Mined & 0.9845 & 0.7585 & 5.50 & \\
+        & Random     & 0.9830 & 0.7555 & 5.50 & \multirow{2}{*}{0.0\%} & \multirow{2}{*}{948} & \multirow{2}{*}{652} \\
+        & Hard-Mined & 0.9845 & 0.7585 & 5.50 & & & \\
       \midrule
       \multirow{2}{*}{YOLO12n}
-        & Random     & 0.9882 & 0.7772 & 18.08 & \multirow{2}{*}{-11.79} \\
-        & Hard-Mined & 0.9933 & 0.7838 & 6.29 & \\
+        & Random     & 0.9882 & 0.7772 & 18.08 & \multirow{2}{*}{-65.2\%} & \multirow{2}{*}{548} & \multirow{2}{*}{1052} \\
+        & Hard-Mined & 0.9933 & 0.7838 & 6.29 & & & \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
-  {\footnotesize Mined negatives selected from baseline FPs at $\tau{=}0.25$;
-  sample counts strictly matched per architecture ($N{=}4{,}001$).}
+  {\footnotesize $N_{\mathrm{target}}{=}1{,}600$ negatives per architecture.
+  \textbf{Mined}: frames flagged as FPs by the baseline ($r{=}0\%$) model
+  at $\tau{=}0.25$. \textbf{Fill}: deterministically backfilled from
+  remaining negatives to reach $N_{\mathrm{target}}$. Mining purity =
+  Mined\,/\,1600.}
 \end{table}
 
-The empirical results in Table~\ref{tab:rq2} confirm that hard-negative curation
-yields differential utility across spatial aggregation designs. For models incorporating
-attention mechanisms, mining confusable background scenes provides high-value
-contrastive supervision: YOLO11n reduces false alarms by $71.0\%$
-($24.37 \to 7.08\,\mathrm{FP/1k}$, $\Delta = -17.29$) while boosting $\mathrm{mAP}_{50:95}$
-from $0.7699$ to $0.7786$. Similarly, YOLO12n (area attention) achieves a $65.2\%$
-reduction ($18.08 \to 6.29\,\mathrm{FP/1k}$, $\Delta = -11.79$) alongside top-tier
-localization ($\mathrm{mAP}_{50:95} = 0.7838$). Conversely, YOLO26n (pure reparameterized
-convolution) attains an identical low false-positive rate under uniform random
-sampling ($5.50\,\mathrm{FP/1k}$, $\Delta = +0.00$) while slightly increasing localization
-accuracy ($0.7555 \to 0.7585$). This demonstrates that edge practitioners deploying
-pure convolutional architectures can bypass multi-stage offline mining pipelines
-entirely, whereas attention-based architectures require curated negative sets to
-suppress background false alarms.
+Table~\ref{tab:rq2} and Fig.~\ref{fig:empirical_summary}c compare hard-negative
+mining against uniform random sampling. The attention-equipped models show large
+FP reductions: YOLO11n $-71.0\%$ ($24.37 \to 7.08\,\mathrm{FP/1k}$) and
+YOLO12n $-65.2\%$ ($18.08 \to 6.29\,\mathrm{FP/1k}$), with concurrent
+$\mathrm{mAP}_{50:95}$ improvements. YOLO26n shows an identical false-positive
+rate under both conditions ($5.50\,\mathrm{FP/1k}$, 7 raw detections on
+identical cabin outliers).
+
+\noindent\textbf{Mining-pool purity and a complicating observation.}
+The ``Mined'' and ``Fill'' columns in Table~\ref{tab:rq2} reveal that mining
+purity varies inversely with the observed benefit. YOLO26n's mined set is
+59.2\% genuinely curated (948/1,600)---the purest of the three---yet shows
+zero FP gain. YOLO11n (37.2\% pure) and YOLO12n (34.2\% pure) contain majority
+backfill yet show the largest reductions. If curation purity alone were the
+driver, the pattern should run the other way. We identify two candidate
+explanations, neither fully resolved within this single-seed protocol:
+(1)~the backfilled fraction in YOLO11n and YOLO12n's mined sets partially
+overlaps with negative content already present in the random-40\% baseline,
+meaning the measured effect conflates genuine curation with incidental
+re-sampling; (2)~YOLO26n's convolution-only backbone may already saturate
+its background-suppression capacity at $r{=}40\%$ random (it reaches only
+7 raw FPs at that point), leaving no headroom for mining to improve upon.
+The title's framing---``Curate for Attention, Sample for
+Convolutions''---captures the observed differential response but should be
+understood as a preliminary empirical pattern, not a confirmed causal
+mechanism. Resolving whether the driver is architectural receptive-field
+structure, mining purity, or baseline headroom requires a controlled
+experiment equalizing mined fractions across architectures, ideally with
+multiple seeds.
 
 \subsection{Operational Deployment Cost Translation}
 \label{subsec:cost_results}
@@ -537,214 +617,192 @@ across three standard camera streaming frequencies.
       \multirow{3}{*}{YOLO11n}
         & 0\% Neg.\ Baseline       & 870   & 2{,}610 & 5{,}220 \\
         & Balanced Split (40\%)    & 355   & 1{,}065 & 2{,}129 \\
-        & Natural Split (80\%)     & 69    & 206     & 412     \\
+        & 80\% Neg.\ Ratio         & 69    & 206     & 412     \\
       \midrule
       \multirow{3}{*}{YOLO26n}
         & 0\% Neg.\ Baseline       & 1{,}443 & 4{,}328 & 8{,}655 \\
         & Balanced Split (40\%)    & 80      & 240     & 481     \\
-        & Natural Split (80\%)     & \textbf{46} & \textbf{137} & \textbf{274} \\
+        & 80\% Neg.\ Ratio         & \textbf{46} & \textbf{137} & \textbf{274} \\
       \midrule
       \multirow{3}{*}{YOLO12n}
         & 0\% Neg.\ Baseline       & 756   & 2{,}267 & 4{,}534 \\
         & Balanced Split (40\%)    & 263   & 790     & 1{,}580 \\
-        & Natural Split (80\%)     & 103   & 309     & 619     \\
+        & 80\% Neg.\ Ratio         & 103   & 309     & 619     \\
       \bottomrule
     \end{tabular}
   \end{center}
   \vspace{-2pt}
-  {\footnotesize Modeled via~\eqref{eq:nuisance} under natural negative
-  prevalence ($p_{\mathrm{neg}}{=}0.809$). Minimum alert rates in bold.}
+  {\footnotesize Modeled via~\eqref{eq:nuisance} using operational negative
+  prevalence $p_{\mathrm{neg}}{=}0.809$. Minimum alert rates in bold.}
 \end{table}
 
 This comparison highlights a foundational distinction in edge AIoT system
-engineering: inference latency is architecture-bound (governed by parameter
-volume and FLOPs), while operational false-positive rate is curation-bound
-(governed by negative-frame composition). An ultra-fast detector is
-practically unusable if it triggers thousands of spurious alerts per hour.
-Under 0\% baseline training, all three detectors produce between 756 and 1{,}443
-nuisance alerts per hour at a modest 5\,FPS, and between 4{,}534 and 8{,}655 alerts
-per hour at 30\,FPS. Training with 80\% negative frames reduces these projections to
-46 alerts/hour for YOLO26n (a $31.4\times$ reduction), 69 alerts/hour for YOLO11n
-(a $12.6\times$ reduction), and 103 alerts/hour for YOLO12n (a $7.3\times$ reduction)
-at 5\,FPS. Each suppressed detection preserves edge compute, prevents unnecessary
+engineering: while raw inference latency is architecture-bound (all
+three models executing within $16.8$--$21.7$\,ms on edge hardware,
+Table~\ref{tab:architectures}), operational false-alarm rate is curation-bound
+(varying by up to $31.5\times$ depending on training-data composition). An
+ultra-fast detector running at $\sim$46--60\,FPS is practically unusable if it
+triggers thousands of spurious alerts per hour. Under 0\% baseline training,
+all three detectors produce between 756 and 1{,}443 nuisance alerts per hour at
+a modest 5\,FPS, and between 4{,}534 and 8{,}655 alerts per hour at 30\,FPS.
+Training with 80\% negative frames reduces these projections to 46 alerts/hour
+for YOLO26n, 69 alerts/hour for YOLO11n, and 103 alerts/hour for YOLO12n at
+5\,FPS. Each suppressed detection preserves edge compute, prevents unnecessary
 cellular uploads, avoids SoC thermal throttling, and preserves operator trust.
 
 \section{Discussion}
 \label{sec:discussion}
 
 \subsection{Practical Guidelines for AIoT Data Curation}
-The empirical results across all three architectures offer two concrete
-recommendations for edge data curation. First, the optimal training configuration
-depends on the operational deployment objective:
-\begin{enumerate}
-  \item \textbf{False-Alarm Minimization (Safety-Critical AIoT):} For systems
-        where false alarms degrade user trust or incur uplink costs, training
-        at the natural negative prevalence (80\%) is globally superior across
-        all three architectures. YOLO26n provides the lowest absolute false-alarm
-        rate ($3.14\,\mathrm{FP/1k}$, yielding 46 alerts/hr at 5\,FPS), making
-        pure reparameterized convolutions well-suited for high-precision,
-        low-power sensing.
-  \item \textbf{Compute-Constrained Training and High IoU:} When training budgets
-        or storage constraints limit dataset size, a 40\% negative ratio offers
-        the best compromise. It retains $\ge 98.3\%$ of peak $\mathrm{mAP}_{50}$,
-        achieves top-tier localization ($\mathrm{mAP}_{50:95} = 0.7772$ for
-        YOLO12n), and captures the bulk of false-positive suppression with less
-        than one-third the negative volume of the 80\% split.
-\end{enumerate}
+Our empirical findings offer two operational recommendations:
+
+\noindent\textbf{1) False-Alarm Minimization (Safety-Critical AIoT):} For systems
+where false alarms degrade user trust or incur uplink costs, training at the
+80\% negative ratio is globally superior across all three architectures. YOLO26n
+provides the lowest absolute false-alarm rate ($3.14\,\mathrm{FP/1k}$, yielding 46
+alerts/hr at 5\,FPS), making pure reparameterized convolutions well-suited for
+high-precision, low-power sensing.
+
+\noindent\textbf{2) Compute-Constrained Training and High Localization:} When training
+budgets limit dataset size, a 40\% negative ratio offers the best compromise. It
+retains $\ge 98.3\%$ of peak $\mathrm{mAP}_{50}$, achieves top-tier localization
+($\mathrm{mAP}_{50:95} = 0.7772$ for YOLO12n), and captures the bulk of false-alarm
+suppression with less than one-third the negative volume of the 80\% split.
+
 Second, while detection sensitivity ($\mathrm{mAP}_{50}$) exhibits broad stability
 across negative ratios ($r \in [40\%, 80\%]$), false-positive suppression
 magnitudes diverge sharply by architecture: YOLO26n suppresses false alarms by
 $31.5\times$, YOLO11n by $12.7\times$, and YOLO12n by $7.3\times$. This divergence
-demonstrates that edge architects cannot decouple data curation from detector
+suggests that edge architects cannot decouple data curation from detector
 selection: models relying on attention mechanisms require higher negative
 densities to achieve comparable background suppression as pure convolutional backbones.
 
 \subsection{Limitations}
-Several constraints frame this study:
-\begin{itemize}
-  \item \textbf{Domain Scope:} Experiments use an in-cabin vehicular dataset.
-        While its 80.9\% negative prevalence mirrors continuous AIoT conditions,
-        findings may not extrapolate to domains with distinct backgrounds (e.g.,
-        aerial remote sensing, underwater robotics).
-  \item \textbf{Frame-Level Partitioning:} Consecutive video frames may share
-        ambient cabin background, introducing potential temporal proximity
-        correlation between splits. Subject-disjoint validation is a direction
-        for future multi-cohort evaluations.
-  \item \textbf{Model Scale:} We evaluate nano variants; larger variants may
-        exhibit different saturation thresholds.
-  \item \textbf{Point Estimates:} Each configuration is a single-seed run
-        ($\text{seed}{=}42$), precluding multi-seed hypothesis testing.
-  \item \textbf{Analytical Alerts:} Nuisance rates are modeled analytically
-        rather than measured via in-vehicle physical telemetry.
+Several methodological constraints contextualize our findings:
+\begin{itemize}\setlength{\itemsep}{1pt}\setlength{\parskip}{0pt}\setlength{\parsep}{0pt}
+  \item \textbf{Training Step Confound:} Fixed 100-epoch training across
+        variable dataset sizes (2,401 to 12,005 frames) means the 80\% condition
+        benefits from $\approx 5\times$ more gradient steps than the 0\%
+        baseline. Disentangling negative content from total optimization budget
+        requires step-matched ablation studies.
+  \item \textbf{Mining Purity Variations:} The hard-negative pools contained
+        differing fractions of genuinely mined false positives (34.2\%--59.2\%)
+        due to deterministic backfill to $N{=}1{,}600$, partially confounding
+        curation response with filler composition.
+  \item \textbf{Frame-Level Partitioning:} Consecutive frames within a recording
+        session share cabin environment and lighting. Near-ceiling detection
+        performance ($\mathrm{mAP}_{50} > 0.97$) across all splits may partly
+        reflect temporal proximity correlation rather than cross-vehicle
+        generalization; subject-disjoint multi-cohort evaluation is needed.
+  \item \textbf{Foreground Class Imbalance:} The positive core is heavily
+        dominated by \texttt{phone\_use} (81.2\%), meaning aggregate mAP
+        primarily mirrors majority-class accuracy rather than rarer,
+        safety-critical fatigue indicators (\texttt{yawning}, 5.3\%).
+  \item \textbf{Single-Seed Point Estimates:} Results stem from a single
+        deterministic seed ($\text{seed}{=}42$), meaning small count differences
+        (e.g., 4 vs.\ 7 raw false alarms) cannot be separated from stochastic
+        training noise without multi-seed confidence intervals.
 \end{itemize}
 
 \section{Conclusion}
 \label{sec:conclusion}
 
-This paper has presented the first cross-architecture empirical investigation
-of negative-frame training configurations for lightweight edge detectors in a
-safety-critical AIoT driver-monitoring application. By training YOLO11n,
-YOLO26n, and YOLO12n under systematically varied conditions on a 15,723-frame
-corpus, we established that even with matched parameter capacity, architectures
-exhibit substantially different false-positive suppression magnitudes under
-identical negative-ratio configurations. The analytical mapping from
-$\mathrm{FP/1k}$ to hourly nuisance alerts demonstrates that data-level
-negative curation governs operational reliability independently of inference
-latency, providing AIoT system architects with an actionable framework for joint
-model selection and data engineering. Future work will extend this benchmark
-across multi-domain AIoT sensor feeds and on-device nuisance alert telemetry
-validation.
+This paper investigated the interaction between negative-frame training
+curation and edge detector architectures across matched-capacity ($\approx
+2.6$\,M parameter) models in continuous AIoT sensing. Our empirical findings
+demonstrate that while models exhibit diverse suppression trajectories across
+negative ratios---with pure reparameterized convolution showing steep initial
+suppression and attention-equipped variants showing sustained sensitivity---all
+three architectures converge to a narrow false-positive band (4--9 raw false
+detections on 1,272 test frames) under high negative prevalence ($r{=}80\%$).
+Because on-device latency remains strictly architecture-bound ($16.8$--$21.7$\,ms),
+operational nuisance alert rates are primarily governed by training-data
+composition rather than architectural choice. For edge AIoT practitioners, the
+core takeaway is practical: curate negative frames to reflect real-world
+operational background dominance first, and select detector backbones based on
+hardware latency targets rather than relying on architectural inductive biases
+alone to suppress false alarms.
 
 \section*{Acknowledgment}
 Acknowledgment omitted for double-blind review.
 
 \begin{thebibliography}{00}
-
 \bibitem{b1}
 T.-Y. Lin, P. Goyal, R. Girshick, K. He, and P. Doll\'{a}r,
 ``Focal loss for dense object detection,''
 in \textit{Proc. IEEE/CVF Int. Conf. Comput. Vision (ICCV)}, Oct. 2017, pp. 2980--2988.
-
 \bibitem{b2}
 X. Wang, X. Hu, C. Chen, Z. Fan, and S. Peng,
 ``Improving object detection with consistent negative sample mining,''
 in \textit{Proc. Int. Conf. Neural Inf. Process. (ICONIP)}, LNCS vol. 11954, Springer, 2019, pp. 248--259.
-
 \bibitem{b3}
 S. Zhang, C. Chi, Y. Yao, Z. Lei, and S. Li,
 ``Bridging the gap between anchor-based and anchor-free detection via adaptive training sample selection,''
 in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, Jun. 2020, pp. 9759--9768.
-
 \bibitem{b4}
 B. Singh, M. Najibi, and L. S. Davis,
 ``SNIPER: Efficient multi-scale training,''
 in \textit{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, vol. 31, Dec. 2018, pp. 9333--9343.
-
 \bibitem{b5}
 S. Beery, G. Van Horn, and P. Perona,
 ``Recognition in Terra Incognita,''
 in \textit{Proc. Eur. Conf. Comput. Vision (ECCV)}, Sep. 2018, pp. 456--473.
-
 \bibitem{b6}
 P. F. Felzenszwalb, R. B. Girshick, D. McAllester, and D. Ramanan,
 ``Object detection with discriminatively trained part-based models,''
 \textit{IEEE Trans. Pattern Anal. Mach. Intell.}, vol. 32, no. 9, pp. 1627--1645, Sep. 2010.
-
 \bibitem{b7}
 T. Gupta, A. Schwing, and D. Hoiem,
 ``No-frills human-object interaction detection,''
 in \textit{Proc. IEEE/CVF Int. Conf. Comput. Vision (ICCV)}, Oct. 2019, pp. 1960--1969.
-
 \bibitem{b8}
 Ultralytics,
 ``Tips for best training results: Background images,''
 \textit{Ultralytics Documentation}, 2024. [Online]. Available: \url{https://docs.ultralytics.com/guides/model-training-tips/}
-
 \bibitem{b9}
 G. Jocher and J. Qiu,
 ``Ultralytics YOLO11,''
 \textit{GitHub repository}, 2024. [Online]. Available: \url{https://github.com/ultralytics/ultralytics}
-
 \bibitem{b10}
 Ultralytics,
 ``Ultralytics YOLO26 architecture and models,''
 \textit{Ultralytics Documentation and Repository}, 2026. [Online]. Available: \url{https://docs.ultralytics.com/models/yolo26/}
-
 \bibitem{b11}
 Y. Tian, Q. Ye, and M. Doermann,
 ``YOLOv12: Attention-centric real-time object detectors,''
 \textit{arXiv preprint arXiv:2502.12524}, Feb. 2025.
-
 \bibitem{b12}
 A. Sengupta, V. Sharma, and R. Mall,
 ``Computer vision for in-cabin driver monitoring: A comprehensive review,''
 \textit{IEEE Trans. Intell. Transp. Syst.}, vol. 24, no. 9, pp. 8945--8965, Sep. 2023.
-
 \bibitem{b13}
 J. Chen, K. Li, Z. Rong, and K. Bilgic,
 ``False alert suppression and energy-efficient edge inferencing in smart surveillance IoT,''
 \textit{IEEE Internet Things J.}, vol. 10, no. 14, pp. 12340--12352, Jul. 2023.
-
 \bibitem{b14}
 A. Shrivastava, A. Gupta, and R. Girshick,
 ``Training region-based object detectors with online hard example mining,''
 in \textit{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, Jun. 2016, pp. 761--769.
-
 \bibitem{b15}
 E. Wang, M. Davis, S. Xu, and T. Huang,
 ``Deep learning on micro-edge devices: A survey on architectural efficiency and inference constraints,''
 \textit{IEEE Access}, vol. 11, pp. 45120--45138, May 2023.
-
 \bibitem{b16}
 X. Li \textit{et al.},
 ``Generalized focal loss: Learning qualified and distributed bounding boxes for dense object detection,''
 in \textit{Proc. Adv. Neural Inf. Process. Syst. (NeurIPS)}, vol. 33, Dec. 2020, pp. 18312--18323.
-
 \bibitem{b17}
-Y. Zhao \textit{et al.},
-``DETRs beat YOLOs on real-time object detection,''
-in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. (CVPR)}, Jun. 2024, pp. 16965--16974.
-
-\bibitem{b18}
-N. Carion, F. Massa, G. Synnaeve, N. Usunier, A. Kirillov, and S. Zagoruyko,
-``End-to-end object detection with transformers,''
-in \textit{Proc. Eur. Conf. Comput. Vis. (ECCV)}, Springer, Sep. 2020, pp. 213--229.
-
-\bibitem{b19}
 L. Fridman, P. Toyman, and B. Seaman,
 ``Cognitive load and distraction detection via multi-sensor driver monitoring in automated vehicles,''
 \textit{IEEE Trans. Intell. Veh.}, vol. 4, no. 2, pp. 270--281, Jun. 2019.
-
-\bibitem{b20}
+\bibitem{b18}
 State Farm,
 ``State Farm Distracted Driver Detection,''
 \textit{Kaggle Competition Dataset}, 2016. [Online]. Available: \url{https://www.kaggle.com/c/state-farm-distracted-driver-detection}
-
-\bibitem{b21}
+\bibitem{b19}
 I. Ortega \textit{et al.},
 ``DMD: A large-scale multi-modal driver monitoring dataset for attention and distraction analysis,''
 in \textit{Proc. IEEE/CVF Conf. Comput. Vis. Pattern Recognit. Workshops (CVPRW)}, Jun. 2020, pp. 498--507.
-
 \end{thebibliography}
 
 \end{document}

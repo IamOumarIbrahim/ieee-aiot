@@ -1,5 +1,47 @@
 # Development Log
 
+## [2026-09-08] - Peer Review Revisions, Empirical Latency Grounding, and 6-Page Optimization
+
+### Overview
+Executed a comprehensive revision of the IEEE AIoT conference manuscript (`docs/manuscript/main.tex`) to address all peer reviewer critiques. Benchmarked inference latency across all three architectures on an RTX 4060 GPU, clarified confidence and IoU evaluation thresholds, reconciled the RQ2 reference ratio notation ($r_{\mathrm{ref}} = 40\%$), documented the curation pipeline audit explaining the YOLO26n exact tie, softened causal verbs to align with the single-seed claims boundary, reframed RQ1 findings, cleaned up bibliography citations, and ensured strict compilation within the hard 6-page limit.
+
+---
+
+### Key Changes & Implementations
+
+#### 1. Empirical Latency Benchmarking (Table I & Central Thesis)
+* **Benchmarked on Host Edge GPU (RTX 4060 Laptop GPU, PyTorch FP32, batch=1, 640×640):**
+  * YOLO11n: 16.8 ms forward / 59.6 FPS
+  * YOLO26n: 21.7 ms forward / 46.1 FPS
+  * YOLO12n: 21.3 ms forward / 47.0 FPS
+* Incorporated latency and throughput into Table I (`tab:architectures`).
+* Grounded the central thesis across Abstract, Introduction, Results, Discussion, and Conclusion: all three models achieve comparable edge latency (~17–22 ms, 46–60 FPS), but operational false-alarm rate diverges by up to $31.5\times$ governed by training-data curation.
+
+#### 2. Evaluation Threshold & Reproducibility Specification
+* Formally stated operating thresholds in Section III-A:
+  * Operational false-alarm metrics ($\mathrm{FP/1k}$ and $\mathcal{A}_h$) evaluated at $\tau = 0.25$, $\mathrm{IoU} = 0.70$ over all 1,272 background test frames.
+  * Standard detection accuracy ($\mathrm{mAP}_{50}$, $\mathrm{mAP}_{50:95}$, $\mathrm{P}$, $\mathrm{R}$) evaluated at $\mathrm{IoU} = 0.60$ over the full confidence curve with $\mathrm{P}$ and $\mathrm{R}$ reported at maximum-$F_1$.
+* Added explicit footnote in Table III specifying these operating points.
+
+#### 3. RQ2 Reference Ratio Harmonization
+* Reconciled notation from "$r^*$" to $r_{\mathrm{ref}} = 40\%$ ($N_{\mathrm{target}} = 1{,}600$ negatives, $N = 4{,}001$ total frames).
+* Justified 40% as the compute-efficient reference split identified in Section V-A rather than claiming it was an architecture-specific dynamic optimum.
+
+#### 4. Explanation of YOLO26n Curation Tie (5.50 → 5.50 FP/1k)
+* Disclosed curation pipeline audit numbers: 10,178 candidate pool $\to$ 948 FPs detected above $\tau=0.25$ $\to$ 652 negatives (40.8%) deterministically backfilled.
+* Identified that the remaining 7 test false positives ($7 / 1272 \times 1000 = 5.50\,\mathrm{FP/1k}$) occur on identical visual corner cases (severe motion blur and specular reflections) absent from the training pool.
+
+#### 5. Causal Language Alignment & Reframing
+* Methodically toned down causal/epistemic verbs ("establish/confirm/demonstrate" $\to$ "indicate/suggest/observe/is consistent with") to harmonize prose with the single-seed claims boundary ($\text{seed}=42$).
+* Reframed RQ1 as a two-part discovery: suppression direction is architecture-invariant, but suppression magnitude ($31.5\times$ vs $7.3\times$) and mAP-optimal ratios are architecture-dependent.
+
+#### 6. Dataset Documentation & Bibliography Cleanup
+* Documented positive-class distribution: 3,001 positive frames (2,437 `phone_use`, 264 `drinking`, 159 `yawning`, 141 `hand_over_mouth`).
+* Renumbered bibliography citations to remove the gap between [16] and [19], yielding a clean sequential list of 19 references.
+* Optimized vertical spacing and verified exact 6-page PDF compilation with 0 overfull hboxes.
+
+---
+
 ## [2026-09-05] - IEEE Manuscript Terminology, Mathematical Problem Formulation, and Notation Standardization
 
 ### Overview

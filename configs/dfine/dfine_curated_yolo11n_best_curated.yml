@@ -1,0 +1,10 @@
+# D-FINE-N RQ2 Curated Hard-Negative Configuration
+__include__: [
+  './dfine_hgnetv2_n_coco.yml'
+]
+
+output_dir: ./output/dfine_curated_yolo11n_best_curated
+
+train_dataloader:
+  dataset:
+    ann_file: data/processed/RGB/coco/dfine/instances_train_curated_yolo11n_best_curated.json
