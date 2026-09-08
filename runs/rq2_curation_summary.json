@@ -346,5 +346,121 @@
       }
     },
     "delta_fp_per_1k": -11.79
+  },
+  "yolov10n": {
+    "model": "yolov10n",
+    "target_count": 1600,
+    "total_frames": 4001,
+    "random": {
+      "split": "train_40_mod_neg",
+      "ratio": "40%",
+      "train_time_minutes": 106.97,
+      "val_precision": 0.8934,
+      "val_recall": 0.9583,
+      "val_map50": 0.9558,
+      "val_map50_95": 0.7074,
+      "val_fp_per_1k": 16.51,
+      "val_total_fps": 21,
+      "test_precision": 0.8918,
+      "test_recall": 0.9765,
+      "test_map50": 0.9615,
+      "test_map50_95": 0.7428,
+      "test_fp_per_1k": 14.15,
+      "total_test_fps": 18,
+      "test_neg_frames": 1272,
+      "per_class": {
+        "val": {
+          "yawning": {
+            "map50": 0.857,
+            "map50_95": 0.607
+          },
+          "hand_over_mouth": {
+            "map50": 0.981,
+            "map50_95": 0.7174
+          },
+          "drinking": {
+            "map50": 0.9909,
+            "map50_95": 0.7507
+          },
+          "phone_use": {
+            "map50": 0.9942,
+            "map50_95": 0.7547
+          }
+        },
+        "test": {
+          "yawning": {
+            "map50": 0.8661,
+            "map50_95": 0.6408
+          },
+          "hand_over_mouth": {
+            "map50": 0.9903,
+            "map50_95": 0.8307
+          },
+          "drinking": {
+            "map50": 0.995,
+            "map50_95": 0.7463
+          },
+          "phone_use": {
+            "map50": 0.9946,
+            "map50_95": 0.7535
+          }
+        }
+      }
+    },
+    "curated": {
+      "train_time_minutes": 106.9,
+      "val_precision": 0.9348,
+      "val_recall": 0.9383,
+      "val_map50": 0.9501,
+      "val_map50_95": 0.7009,
+      "val_fp_per_1k": 7.08,
+      "val_total_fps": 9,
+      "test_precision": 0.9328,
+      "test_recall": 0.9653,
+      "test_map50": 0.9836,
+      "test_map50_95": 0.7697,
+      "test_fp_per_1k": 6.29,
+      "total_test_fps": 8,
+      "test_neg_frames": 1272,
+      "per_class": {
+        "val": {
+          "yawning": {
+            "map50": 0.8284,
+            "map50_95": 0.546
+          },
+          "hand_over_mouth": {
+            "map50": 0.995,
+            "map50_95": 0.7822
+          },
+          "drinking": {
+            "map50": 0.9825,
+            "map50_95": 0.7151
+          },
+          "phone_use": {
+            "map50": 0.9945,
+            "map50_95": 0.7604
+          }
+        },
+        "test": {
+          "yawning": {
+            "map50": 0.9596,
+            "map50_95": 0.7208
+          },
+          "hand_over_mouth": {
+            "map50": 0.9903,
+            "map50_95": 0.8344
+          },
+          "drinking": {
+            "map50": 0.9919,
+            "map50_95": 0.7678
+          },
+          "phone_use": {
+            "map50": 0.9924,
+            "map50_95": 0.7556
+          }
+        }
+      }
+    },
+    "delta_fp_per_1k": -7.86
   }
 }

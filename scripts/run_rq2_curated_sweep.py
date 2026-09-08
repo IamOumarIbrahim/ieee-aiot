@@ -33,11 +33,12 @@ MODELS = [
     {"key": "yolo11n", "base_weights": "yolo11n.pt"},
     {"key": "yolo26n", "base_weights": "yolo26n.pt"},
     {"key": "yolo12n", "base_weights": "yolo12n.pt"},
+    {"key": "yolov10n", "base_weights": "yolov10n.pt"},
 ]
 
 def parse_args():
     parser = argparse.ArgumentParser(description="RQ2 Hard-Negative Curated Training & Evaluation Runner")
-    parser.add_argument("--models", type=str, default="yolo11n,yolo26n,yolo12n", help="Comma-separated model keys to run")
+    parser.add_argument("--models", type=str, default="yolo11n,yolo26n,yolo12n,yolov10n", help="Comma-separated model keys to run")
     parser.add_argument("--epochs", type=int, default=100, help="Training epochs (default: 100)")
     parser.add_argument("--batch", type=int, default=16, help="Batch size (default: 16)")
     parser.add_argument("--imgsz", type=int, default=640, help="Image resolution (default: 640)")
@@ -193,6 +194,7 @@ def update_manuscript_table_iv(rq2_summary):
         "yolo11n": "YOLO11n",
         "yolo26n": "YOLO26n",
         "yolo12n": "YOLO12n",
+        "yolov10n": "YOLOv10n",
     }
 
     for model_key, det_name in name_map.items():

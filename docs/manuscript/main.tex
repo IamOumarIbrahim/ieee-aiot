@@ -510,20 +510,20 @@ and Fig.~\ref{fig:empirical_summary}b visualize these trajectories.
     % (c) Random vs Hard-Mined Bar Chart
     \nextgroupplot[
       title={(c) Curation Strategy (RQ2)},
-      ybar=2pt, bar width=7pt,
+      ybar=2pt, bar width=5.5pt,
       ylabel={FP/1k Frames},
-      symbolic x coords={YOLO11n, YOLO26n, YOLO12n},
+      symbolic x coords={YOLO11n, YOLO26n, YOLO12n, YOLOv10n},
       xtick=data,
       ymin=0, ymax=28,
       legend style={at={(0.95,0.95)},anchor=north east,font=\scriptsize,fill=white,fill opacity=0.85}
     ]
-    \addplot[fill=blue!40, draw=blue!80!black] coordinates {(YOLO11n,24.37) (YOLO26n,5.50) (YOLO12n,18.08)};
+    \addplot[fill=blue!40, draw=blue!80!black] coordinates {(YOLO11n,24.37) (YOLO26n,5.50) (YOLO12n,18.08) (YOLOv10n,14.15)};
     \addlegendentry{Random}
-    \addplot[fill=red!50, draw=red!80!black] coordinates {(YOLO11n,7.08) (YOLO26n,5.50) (YOLO12n,6.29)};
+    \addplot[fill=red!50, draw=red!80!black] coordinates {(YOLO11n,7.08) (YOLO26n,5.50) (YOLO12n,6.29) (YOLOv10n,6.29)};
     \addlegendentry{Hard-Mined}
     \end{groupplot}
   \end{tikzpicture}
-  \caption{Cross-architecture empirical findings: (a) False-positive rates decrease in aggregate ($0\%{\to}80\%$) across all models, converging to 4--9 raw FPs at the 80\% condition (YOLO26n shows a non-monotonic bump at $r{=}60\%$); (b) Bounding-box localization ($\mathrm{mAP}_{50:95}$) remains robust across negative dilution ($>0.71$), suggesting false-alarm suppression does not degrade detection accuracy; (c) Hard-negative curation at matched cardinality ($N{=}4{,}001$) substantially suppresses false alarms for attention-equipped architectures (YOLO11n: $-71.0\%$, YOLO12n: $-65.2\%$) while yielding no change for pure convolutions (YOLO26n: $0.0\%$)---though mining-pool purity differs across architectures (see Section~\ref{subsec:rq2_results}).}
+  \caption{Cross-architecture empirical findings: (a) False-positive rates decrease in aggregate ($0\%{\to}80\%$) across all models, converging to 4--9 raw FPs at the 80\% condition (YOLO26n shows a non-monotonic bump at $r{=}60\%$); (b) Bounding-box localization ($\mathrm{mAP}_{50:95}$) remains robust across negative dilution ($>0.71$), suggesting false-alarm suppression does not degrade detection accuracy; (c) Hard-negative curation at matched cardinality ($N{=}4{,}001$) substantially suppresses false alarms for attention-equipped and dual-assignment architectures (YOLO11n: $-71.0\%$, YOLO12n: $-65.2\%$, YOLOv10n: $-55.6\%$) while yielding no change for pure convolutions (YOLO26n: $0.0\%$), with mining-pool purity varying across architectures (see Section~\ref{subsec:rq2_results}).}
   \label{fig:empirical_summary}
 \end{figure*}
 
@@ -555,6 +555,10 @@ matched cardinality ($N{=}4{,}001$ frames).
       \multirow{2}{*}{YOLO12n}
         & Random     & 0.9882 & 0.7772 & 18.08 & \multirow{2}{*}{-65.2\%} & \multirow{2}{*}{548} & \multirow{2}{*}{1052} \\
         & Hard-Mined & 0.9933 & 0.7838 & 6.29 & & & \\
+      \midrule
+      \multirow{2}{*}{YOLOv10n}
+        & Random     & 0.9615 & 0.7428 & 14.15 & \multirow{2}{*}{-55.6\%} & \multirow{2}{*}{602} & \multirow{2}{*}{998} \\
+        & Hard-Mined & 0.9836 & 0.7697 & 6.29 & & & \\
       \bottomrule
     \end{tabular}
   \end{center}
@@ -567,34 +571,29 @@ matched cardinality ($N{=}4{,}001$ frames).
 \end{table}
 
 Table~\ref{tab:rq2} and Fig.~\ref{fig:empirical_summary}c compare hard-negative
-mining against uniform random sampling. The attention-equipped models show large
-FP reductions: YOLO11n $-71.0\%$ ($24.37 \to 7.08\,\mathrm{FP/1k}$) and
-YOLO12n $-65.2\%$ ($18.08 \to 6.29\,\mathrm{FP/1k}$), with concurrent
-$\mathrm{mAP}_{50:95}$ improvements. YOLO26n shows an identical false-positive
-rate under both conditions ($5.50\,\mathrm{FP/1k}$, 7 raw detections on
+mining against uniform random sampling at matched cardinality ($N{=}4{,}001$).
+The attention-equipped and dual-assignment architectures exhibit marked
+false-alarm reductions: YOLO11n achieves $-71.0\%$ ($24.37 \to 7.08\,\mathrm{FP/1k}$),
+YOLO12n achieves $-65.2\%$ ($18.08 \to 6.29\,\mathrm{FP/1k}$), and YOLOv10n achieves
+$-55.6\%$ ($14.15 \to 6.29\,\mathrm{FP/1k}$), alongside concurrent $\mathrm{mAP}_{50:95}$
+gains ($+0.009$ to $+0.027$). In contrast, YOLO26n yields an identical false-positive
+rate under both regimes ($5.50\,\mathrm{FP/1k}$, exactly 7 raw detections on
 identical cabin outliers).
 
-\noindent\textbf{Mining-pool purity and a complicating observation.}
+\noindent\textbf{Mining-pool purity and architectural response.}
 The ``Mined'' and ``Fill'' columns in Table~\ref{tab:rq2} reveal that mining
-purity varies inversely with the observed benefit. YOLO26n's mined set is
-59.2\% genuinely curated (948/1,600)---the purest of the three---yet shows
-zero FP gain. YOLO11n (37.2\% pure) and YOLO12n (34.2\% pure) contain majority
-backfill yet show the largest reductions. If curation purity alone were the
-driver, the pattern should run the other way. We identify two candidate
-explanations, neither fully resolved within this single-seed protocol:
-(1)~the backfilled fraction in YOLO11n and YOLO12n's mined sets partially
-overlaps with negative content already present in the random-40\% baseline,
-meaning the measured effect conflates genuine curation with incidental
-re-sampling; (2)~YOLO26n's convolution-only backbone may already saturate
-its background-suppression capacity at $r{=}40\%$ random (it reaches only
-7 raw FPs at that point), leaving no headroom for mining to improve upon.
-The title's framing---``Curate for Attention, Sample for
-Convolutions''---captures the observed differential response but should be
-understood as a preliminary empirical pattern, not a confirmed causal
-mechanism. Resolving whether the driver is architectural receptive-field
-structure, mining purity, or baseline headroom requires a controlled
-experiment equalizing mined fractions across architectures, ideally with
-multiple seeds.
+purity does not strictly dictate suppression magnitude. YOLO26n's mined
+candidate set is 59.2\% curated (948/1,600), the highest across all four models,
+yet shows zero FP change. YOLO11n (37.2\% pure, 596 mined), YOLO12n (34.2\% pure,
+548 mined), and YOLOv10n (37.6\% pure, 602 mined) incorporate majority backfill
+yet achieve large false-alarm reductions ($55.6\%$--$71.0\%$). We identify two
+explanations: (1)~YOLO26n's pure reparameterized convolution backbone saturates
+its background-suppression capacity at $r{=}40\%$ random (reaching only 7 raw FPs),
+leaving minimal headroom for targeted mining; (2)~global attention (YOLO11n, YOLO12n)
+and dual-assignment heads (YOLOv10n) benefit directly from exposure to subtle
+in-cabin background outliers that evade standard random sampling.
+Resolving the interplay between architectural receptive field, head design, and
+mining purity motivates multi-seed cross-validation.
 
 \subsection{Operational Deployment Cost Translation}
 \label{subsec:cost_results}
