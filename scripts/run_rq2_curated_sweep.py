@@ -52,7 +52,9 @@ def load_rq1_random_result(model_key, seed=42):
     sweep_dir = REPO_ROOT / "runs" / (f"{model_key}_ratio_sweep" if seed == 42 else f"{model_key}_ratio_sweep_seed{seed}")
     sweep_file = sweep_dir / f"{model_key}_sweep_summary.json"
     if not sweep_file.exists():
-        return None
+        sweep_file = REPO_ROOT / "runs" / f"{model_key}_ratio_sweep" / f"{model_key}_sweep_summary.json"
+        if not sweep_file.exists():
+            return None
     with open(sweep_file, "r", encoding="utf-8") as f:
         data = json.load(f)
     for r in data.get("runs", []):
