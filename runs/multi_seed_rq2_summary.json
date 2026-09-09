@@ -1,0 +1,94 @@
+{
+  "yolo11n": {
+    "model": "yolo11n",
+    "mined": 0,
+    "fill": 0,
+    "random": {
+      "map50_mean": 0.9919,
+      "map50_std": 0.0019,
+      "map50_95_mean": 0.7711,
+      "map50_95_std": 0.0017,
+      "fp_per_1k_mean": 22.01,
+      "fp_per_1k_std": 3.34
+    },
+    "curated": {
+      "map50_mean": 0.9932,
+      "map50_std": 0.002,
+      "map50_95_mean": 0.7738,
+      "map50_95_std": 0.0067,
+      "fp_per_1k_mean": 7.08,
+      "fp_per_1k_std": 0.0
+    },
+    "pct_delta": -67.8,
+    "delta_fp_per_1k": -14.93
+  },
+  "yolo26n": {
+    "model": "yolo26n",
+    "mined": 0,
+    "fill": 0,
+    "random": {
+      "map50_mean": 0.9726,
+      "map50_std": 0.0148,
+      "map50_95_mean": 0.7388,
+      "map50_95_std": 0.0237,
+      "fp_per_1k_mean": 9.43,
+      "fp_per_1k_std": 5.56
+    },
+    "curated": {
+      "map50_mean": 0.9759,
+      "map50_std": 0.0122,
+      "map50_95_mean": 0.7518,
+      "map50_95_std": 0.0094,
+      "fp_per_1k_mean": 6.29,
+      "fp_per_1k_std": 1.12
+    },
+    "pct_delta": -33.3,
+    "delta_fp_per_1k": -3.14
+  },
+  "yolo12n": {
+    "model": "yolo12n",
+    "mined": 0,
+    "fill": 0,
+    "random": {
+      "map50_mean": 0.9866,
+      "map50_std": 0.0023,
+      "map50_95_mean": 0.7659,
+      "map50_95_std": 0.016,
+      "fp_per_1k_mean": 18.86,
+      "fp_per_1k_std": 1.11
+    },
+    "curated": {
+      "map50_mean": 0.9928,
+      "map50_std": 0.0007,
+      "map50_95_mean": 0.7839,
+      "map50_95_std": 0.0001,
+      "fp_per_1k_mean": 6.29,
+      "fp_per_1k_std": 0.0
+    },
+    "pct_delta": -66.7,
+    "delta_fp_per_1k": -12.57
+  },
+  "yolov10n": {
+    "model": "yolov10n",
+    "mined": 0,
+    "fill": 0,
+    "random": {
+      "map50_mean": 0.9642,
+      "map50_std": 0.0037,
+      "map50_95_mean": 0.7568,
+      "map50_95_std": 0.0197,
+      "fp_per_1k_mean": 14.94,
+      "fp_per_1k_std": 1.11
+    },
+    "curated": {
+      "map50_mean": 0.9788,
+      "map50_std": 0.0067,
+      "map50_95_mean": 0.7673,
+      "map50_95_std": 0.0033,
+      "fp_per_1k_mean": 7.08,
+      "fp_per_1k_std": 1.11
+    },
+    "pct_delta": -52.6,
+    "delta_fp_per_1k": -7.86
+  }
+}

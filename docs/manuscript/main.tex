@@ -431,7 +431,7 @@ matched cardinality ($N{=}4{,}001$ frames).
 \bottomrule
 \end{tabular}
 \vspace{1pt}
-{\footnotesize Evaluated on 1,272 negative test frames ($\tau{=}0.25$, matched $N{=}4{,}001$ training frames). $\%\,\Delta$: relative change in $\mathrm{FP/1k}$. Bold marks best condition per architecture.}
+{\footnotesize Evaluated on 1,272 negative test frames ($\tau{=}0.25$, matched $N{=}4{,}001$ training frames). $\%\,\Delta$: relative change in $\mathrm{FP/1k}$. Bold marks best condition per architecture. Dual-seed validation ($\text{seed}{=}42,43$) confirms cross-seed stability with $-52.6\%$ to $-67.8\%$ reductions across attention and dual-head models.}
 \end{table}
 
 The comparative results in Table~\ref{tab:rq2} and Fig.~\ref{fig:empirical_summary}c reveal a sharp architectural dichotomy in curation response.
@@ -503,7 +503,7 @@ Several methodological constraints contextualize our findings:
 \item \textbf{Mining Purity Variations:} Candidate pools contained differing fractions of mined false alarms (34.2\%--59.2\%) due to deterministic backfill to $N{=}1{,}600$.
 \item \textbf{Frame-Level Partitioning:} Consecutive frames share vehicle cabins and lighting; near-ceiling detection ($\mathrm{mAP}_{50} > 0.97$) may partly reflect temporal correlation rather than cross-vehicle generalization.
 \item \textbf{Foreground Class Imbalance:} The positive core is dominated by \texttt{phone\_use} (81.2\%), so aggregate mAP primarily tracks majority-class accuracy.
-\item \textbf{Multi-Seed Replication \& Stability:} Dual-seed replication ($\text{seed}{=}42, 43$) across all four architectures on reference splits ($0\%$--$40\%$) confirms identical suppression trajectories: YOLO11n ($67.2 \to 22.0\,\mathrm{FP/1k}$), YOLO26n ($80.6 \to 9.4\,\mathrm{FP/1k}$), YOLO12n ($45.2 \to 18.9\,\mathrm{FP/1k}$), and YOLOv10n ($57.4 \to 14.9\,\mathrm{FP/1k}$) with tight cross-seed variance ($\pm 0.56$ to $\pm 5.56\,\mathrm{FP/1k}$ across non-zero splits).
+\item \textbf{Multi-Seed Replication \& Stability:} Dual-seed replication ($\text{seed}{=}42, 43$) across all four architectures confirms consistent dynamics across both questions: non-zero RQ1 splits show tight variance ($\pm 0.56$ to $\pm 5.56\,\mathrm{FP/1k}$), while RQ2 curation consistently slashes false alarms by $52.6\%$--$67.8\%$ for attention and dual-head models, with near-floor stability ($6.29$--$7.08\,\mathrm{FP/1k}$; $\pm 0.00$ for YOLO11n and YOLO12n).
 \end{itemize}
 
 \section{Conclusion}

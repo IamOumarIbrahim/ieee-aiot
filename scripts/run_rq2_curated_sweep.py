@@ -48,8 +48,9 @@ def parse_args():
     parser.add_argument("--populate-only", action="store_true", help="Only populate tables in main.tex from existing summary")
     return parser.parse_args()
 
-def load_rq1_random_result(model_key):
-    sweep_file = REPO_ROOT / "runs" / f"{model_key}_ratio_sweep" / f"{model_key}_sweep_summary.json"
+def load_rq1_random_result(model_key, seed=42):
+    sweep_dir = REPO_ROOT / "runs" / (f"{model_key}_ratio_sweep" if seed == 42 else f"{model_key}_ratio_sweep_seed{seed}")
+    sweep_file = sweep_dir / f"{model_key}_sweep_summary.json"
     if not sweep_file.exists():
         return None
     with open(sweep_file, "r", encoding="utf-8") as f:
@@ -62,7 +63,7 @@ def load_rq1_random_result(model_key):
 def train_curated_model(model_key, base_weights, args):
     tag = f"{model_key}_best_curated"
     cfg_path = REPO_ROOT / "configs" / "yolo" / f"yolo_curated_{tag}.yaml"
-    project_dir = REPO_ROOT / "runs" / f"{model_key}_ratio_sweep"
+    project_dir = REPO_ROOT / "runs" / (f"{model_key}_ratio_sweep" if args.seed == 42 else f"{model_key}_ratio_sweep_seed{args.seed}")
     run_name = f"train_curated_{tag}"
     weights_dir = project_dir / run_name / "weights"
     best_ckpt = weights_dir / "best.pt"
@@ -246,7 +247,7 @@ def update_manuscript_table_iv(rq2_summary):
 
 def main():
     args = parse_args()
-    summary_file = REPO_ROOT / "runs" / "rq2_curation_summary.json"
+    summary_file = REPO_ROOT / "runs" / ("rq2_curation_summary.json" if args.seed == 42 else f"rq2_curation_summary_seed{args.seed}.json")
     rq2_summary = {}
     if summary_file.exists():
         try:
@@ -267,10 +268,10 @@ def main():
         base_w = m["base_weights"]
 
         print(f"\n============================================================")
-        print(f"  PROCESSING RQ2 FOR: {key.upper()}")
+        print(f"  PROCESSING RQ2 FOR: {key.upper()} (SEED {args.seed})")
         print(f"============================================================")
 
-        rand_res = load_rq1_random_result(key)
+        rand_res = load_rq1_random_result(key, seed=args.seed)
         if rand_res is None:
             print(f"[WARN] Could not find RQ1 40% run for {key}. Please verify {key}_sweep_summary.json.")
             continue
@@ -294,7 +295,8 @@ def main():
             json.dump(rq2_summary, f, indent=2)
         print(f"[OK] Incremental RQ2 summary saved to {summary_file}")
 
-    update_manuscript_table_iv(rq2_summary)
+    if args.seed == 42:
+        update_manuscript_table_iv(rq2_summary)
     print("\n[ALL RQ2 TASKS COMPLETED SUCCESSFULLY!]")
 
 if __name__ == "__main__":
