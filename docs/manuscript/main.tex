@@ -15,6 +15,7 @@
 \usepackage{amsmath,amssymb,amsfonts}
 \usepackage{algorithmic}
 \usepackage{graphicx}
+\usepackage[caption=false,font=footnotesize]{subfig}
 \usepackage{textcomp}
 \usepackage{xcolor}
 \usepackage{booktabs}
@@ -156,6 +157,18 @@ and the projected hourly nuisance alert rate $\mathcal{A}_h$ at camera frame rat
 \end{equation}
 where $p_{\mathrm{neg}} \in (0, 1]$ is the natural operational negative prevalence ($p_{\mathrm{neg}} \approx 0.809$ in our vehicular corpus). Operational false alarms ($\mathrm{FP/1k}$ and $\mathcal{A}_h$) are measured at operational threshold $\tau = 0.25$ and NMS intersection over union ($\mathrm{IoU} = 0.70$). Standard detection accuracy metrics ($\mathrm{mAP}_{50}$, $\mathrm{mAP}_{50:95}$, precision $\mathrm{P}$, recall $\mathrm{R}$) are evaluated across the full confidence spectrum, with $\mathrm{P}$ and $\mathrm{R}$ reported at the maximum-$F_1$ operating point.
 
+\begin{figure*}[t]
+  \centering
+  \subfloat[Conv Mechanism ($R_{\mathrm{conv}} = 3\times 3$ Kernel)]{\includegraphics[width=0.22\textwidth]{fig_grid_mech_conv.pdf}\label{fig:mech_conv}}\hfil
+  \subfloat[Conv Heatmap (Localized Grid FP)]{\includegraphics[width=0.22\textwidth]{fig_grid_heat_conv.pdf}\label{fig:heat_conv}}\hfil
+  \subfloat[Conv Flow (Strictly Local $\nabla_W$)]{\includegraphics[width=0.22\textwidth]{fig_grid_flow_conv.pdf}\label{fig:flow_conv}}\\[-0.5ex]
+  \subfloat[Attn Mechanism (Area Partitioning)]{\includegraphics[width=0.22\textwidth]{fig_grid_mech_attn.pdf}\label{fig:mech_attn}}\hfil
+  \subfloat[Attn Heatmap (Global Cross-Binding)]{\includegraphics[width=0.22\textwidth]{fig_grid_heat_attn.pdf}\label{fig:heat_attn}}\hfil
+  \subfloat[Attn Flow (Dense Cross-Area $\nabla_{QK}$)]{\includegraphics[width=0.22\textwidth]{fig_grid_flow_attn.pdf}\label{fig:flow_attn}}
+  \caption{Architectural feature aggregation and negative gradient propagation dynamics across a $3\times 2$ comparative grid. Evaluated on an unannotated negative frame ($X \in \mathcal{D}_{\mathrm{neg}}$, $Y{=}\emptyset$), regression heads vanish and loss collapses strictly to classification BCE (\eqref{eq:det_neg_loss}). \textbf{Top row (Pure RepConv, YOLO26n):} (a) Receptive field is strictly localized to sliding-window kernels ($R_{\mathrm{conv}} = 3\times 3$); (b) Classification score heatmap shows isolated grid-cell activation on high-frequency edge texture (knuckles, $\hat{p}=0.70$); (c) Backpropagation $\nabla_W \mathcal{L}_{\mathrm{cls}}^{\mathrm{neg}}$ updates only local spatial kernels, rapidly saturating edge rejection ($r{=}40\%$) with $0.0\%$ curation gain (\textit{Sample for Convolutions}). \textbf{Bottom row (Linear Area Attention, YOLO12n):} (d) Feature maps are partitioned into horizontal/vertical visual areas; (e) Heatmap displays global area-spanning correlations binding ambient window glare to hand/face contours; (f) Backpropagation $\nabla_{QK} \mathcal{L}_{\mathrm{cls}}^{\mathrm{neg}}$ updates dense cross-area projection matrices, requiring high-entropy hard negatives to decorrelate long-range false bindings ($-65.2\%$ false-alarm drop; \textit{Curate for Attention}).}
+  \label{fig:feature_aggregation_grid}
+\end{figure*}
+
 \subsection{Architectural Loss Dynamics on Negative Frames}
 \label{subsec:loss_mechanics}
 All four evaluated detectors utilize dense anchor-free feature pyramids. On unannotated background frames ($Y{=}\emptyset$), positive anchor assignment yields zero matches across all pyramid scales. Consequently, bounding-box regression loss ($\mathcal{L}_{\mathrm{box}}$) and distribution focal loss ($\mathcal{L}_{\mathrm{dfl}}$) vanish identically, collapsing the total supervisory signal strictly to classification binary cross-entropy (BCE) over all spatial grid cells:
@@ -163,7 +176,7 @@ All four evaluated detectors utilize dense anchor-free feature pyramids. On unan
 \mathcal{L}_{\mathrm{det}}^{\mathrm{neg}} = -\lambda_{\mathrm{cls}} \sum_{s=1}^S \sum_{i=1}^{H_s W_s} \sum_{c=1}^C \log\left(1 - \hat{p}_{s, i, c}\right).
 \label{eq:det_neg_loss}
 \end{equation}
-Although this loss formulation is mathematically shared, how negative gradients propagate back through the network depends fundamentally on architectural feature aggregation:
+Although this loss formulation is mathematically shared, how negative gradients propagate back through the network depends fundamentally on architectural feature aggregation (visualized across mechanism, activation heatmap, and gradient flow in Fig.~\ref{fig:feature_aggregation_grid}):
 \begin{itemize}
 \item \textbf{Pure Reparameterized Convolution (YOLO26n):} Gradients update strictly localized convolutional neural network (CNN) filters (RepConv), penalizing spatial kernels that fire on high-frequency edges resembling driver cues (e.g., steering wheel arcs, seatbelt fixtures).
 \item \textbf{Hybrid Attention (YOLO11n):} Gradients update both convolutional backbones and neck-level partial self-attention projections (C2PSA), modulating prominent spatial feature locations across wider contexts.
@@ -436,11 +449,18 @@ matched cardinality ($N{=}4{,}001$ frames).
 
 The comparative results in Table~\ref{tab:rq2} and Fig.~\ref{fig:empirical_summary}c reveal a sharp architectural dichotomy in curation response.
 
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\columnwidth]{fig_negative_taxonomy.png}
+  \caption{Taxonomy of negative frames ($r{=}40\%$): (a) Low-entropy random sampling selects routine background scenes yielding near-zero classification gradient ($\nabla\mathcal{L} \approx 0$); (b) Hard negatives present high-entropy ambient features (specular glare, cabin shadows) inducing spurious cross-attention context binding ($\mathrm{FP}$ leakage); (c) Active hard curation provides dense supervisory gradients ($-\nabla_\theta \log(1 - \hat{p})$) suppressing false hypotheses.}
+  \label{fig:taxonomy}
+\end{figure}
+
 \noindent\textbf{Curation Saturation in Pure Convolutions.}
 For YOLO26n, hard-negative mining yields zero change in operational false alarms ($0.0\%$ reduction, remaining flat at $5.50\,\mathrm{FP/1k}$). Pure reparameterized convolutions saturate their background discriminative capacity once localized spatial filters learn dominant cabin textures; localized $3 \times 3$ receptive fields lack the global context to resolve rare macro-level interior structures. Consequently, substituting random negatives with mined negatives supplies redundant local gradient signals, offering no marginal benefit.
 
 \noindent\textbf{Amplified Gains in Attention and Dual-Assignment Models.}
-In stark contrast, models equipped with attention (YOLO11n, YOLO12n) and dual-assignment heads (YOLOv10n) achieve dramatic false-alarm reductions ($55.6\%$--$71.0\%$) alongside concurrent gains in localization accuracy ($\mathrm{mAP}_{50:95}$ increasing by up to $+0.027$). Attention layers possess flexible, global hypothesis spaces. Uniform random sampling predominantly selects low-entropy background patches (plain headrests, uniform window glass) that offer negligible gradient feedback to global query-key projection weights. High-entropy hard negatives capture complex ambient reflections and driver silhouettes that provoke spurious cross-attention activations, forcing attention layers to decorrelate non-target contextual patterns from true driver cues. For YOLOv10n, mined negatives penalize spurious multi-anchor activations in the auxiliary head, sharpening the decision boundary of the one-to-one inference branch.
+In stark contrast, models equipped with attention (YOLO11n, YOLO12n) and dual-assignment heads (YOLOv10n) achieve dramatic false-alarm reductions ($55.6\%$--$71.0\%$) alongside concurrent gains in localization accuracy ($\mathrm{mAP}_{50:95}$ increasing by up to $+0.027$). Attention layers possess flexible, global hypothesis spaces. Uniform random sampling predominantly selects low-entropy background patches (plain headrests, uniform window glass) that offer negligible gradient feedback to global query-key projection weights. High-entropy hard negatives capture complex ambient reflections and driver silhouettes that provoke spurious cross-attention activations (Fig.~\ref{fig:taxonomy}), forcing attention layers to decorrelate non-target contextual patterns from true driver cues. For YOLOv10n, mined negatives penalize spurious multi-anchor activations in the auxiliary head, sharpening the decision boundary of the one-to-one inference branch.
 
 \noindent\textbf{The Curation Rule: Curate for Attention, Sample for Convolutions.}
 These results demonstrate that curation efficacy is governed by the detector's architectural receptive field. Edge engineering teams deploying pure convolutional backbones can safely bypass multi-stage mining pipelines, relying on simple random background sampling. Conversely, teams deploying attention or dual-assignment architectures should prioritize hard-negative curation, unlocking major reliability gains at matched dataset cardinality.
