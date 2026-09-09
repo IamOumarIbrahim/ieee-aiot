@@ -61,8 +61,8 @@ and YOLOv10n (dual-label-assignment, non-maximum suppression (NMS)-free),
 evaluated on a 15,723-frame driver-monitoring corpus with 80.9\%
 natural negative prevalence.
 Sweeping five negative-frame ratios (0\%--80\%), we find that
-false-alarm suppression trajectories diverge by up to $31.5\times$
-across architectures at intermediate ratios, yet all four converge
+false-alarm suppression reaches up to $25.7\times$
+across architectures, with all four converging
 to a narrow operational band ($3.14$--$7.08$\,FP/1k, false positives
 per 1,000 frames) at 80\% negatives, with no corresponding drop in
 foreground recall (Spearman $\rho = +0.012$, not significant).
@@ -84,7 +84,8 @@ training, YOLO, hard-negative mining, driver monitoring
 \label{sec:intro}
 %==================================================================
 
-Vision systems in continuous edge AIoT sensing must process video
+Vision systems in continuous edge Artificial Intelligence of Things
+(AIoT) sensing must process video
 for hours at a time under severe foreground-background class
 imbalance~\cite{lin2017focal}, yet the safety-critical events they
 are built to detect are rare. In vehicular driver monitoring systems
@@ -464,15 +465,17 @@ reflections and headrest contours into spurious foreground
 hypotheses. YOLOv10n's dual-assignment architecture must
 simultaneously suppress over-assignment in both its auxiliary
 one-to-many head and its one-to-one inference head, requiring
-sustained negative supervision. The suppression divergence across
-architectures reaches $31.5\times$ (YOLO26n vs. YOLO12n) at
-$r{=}0\%$.
+sustained negative supervision. Relative to the zero-negative
+baseline, suppression factors reach $25.7\times$ for YOLO26n
+($80.59 \to 3.14$\,FP/1k), $14.2\times$ for YOLO11n ($67.22 \to 4.72$),
+$12.2\times$ for YOLOv10n ($57.39 \to 4.72$), and $6.4\times$ for
+YOLO12n ($45.20 \to 7.08$).
 
 \noindent\textbf{Foreground localization is preserved.}
 $\mathrm{mAP}_{50:95}$ remains within the range $0.738$--$0.777$
 across all ratio levels (Fig.~\ref{fig:empirical_summary}b). Because
 negative frames carry no ground truth, bounding-box regression and
-distribution focal loss receive no update from them; only the
+distribution focal loss~\cite{li2020gfl} receive no update from them; only the
 classification branch tightens its decision boundary on background
 cells.
 
@@ -673,35 +676,35 @@ at three standard streaming frame rates.
 \textbf{5\,FPS} & \textbf{15\,FPS} & \textbf{30\,FPS} \\
 \midrule
 \multirow{2}{*}{YOLO11n}
-& 0\% neg.\ baseline  & 870   & 2{,}610 & 5{,}220 \\
+& 0\% neg.\ baseline  & 979   & 2{,}938 & 5{,}875 \\
 & 80\% neg.\ ratio    & 69    & 206     & 412     \\
 \midrule
 \multirow{2}{*}{YOLO26n}
-& 0\% neg.\ baseline  & 1{,}443 & 4{,}328 & 8{,}655 \\
+& 0\% neg.\ baseline  & 1{,}174 & 3{,}521 & 7{,}042 \\
 & 80\% neg.\ ratio    & \textbf{46} & \textbf{137} & \textbf{274} \\
 \midrule
 \multirow{2}{*}{YOLO12n}
-& 0\% neg.\ baseline  & 756   & 2{,}267 & 4{,}534 \\
+& 0\% neg.\ baseline  & 658   & 1{,}975 & 3{,}949 \\
 & 80\% neg.\ ratio    & 103   & 309     & 619     \\
 \midrule
 \multirow{2}{*}{YOLOv10n}
-& 0\% neg.\ baseline  & 996   & 2{,}989 & 5{,}977 \\
+& 0\% neg.\ baseline  & 836   & 2{,}507 & 5{,}014 \\
 & 80\% neg.\ ratio    & 69    & 206     & 412     \\
 \bottomrule
 \end{tabular}
 \vspace{1pt}
-{\footnotesize Modeled via~\eqref{eq:nuisance} with
-$p_{\mathrm{neg}}{=}0.809$. Bold: lowest alert rate per frame-rate column.}
+{\footnotesize Modeled via~\eqref{eq:nuisance} using
+$p_{\mathrm{neg}}{=}0.809$ and measured FP/1k from Table~\ref{tab:rq1}. Bold: lowest alert rate per frame-rate column.}
 \end{table}
 
-Without negative training, detectors trigger up to 8{,}655 nuisance
+Without negative training, detectors trigger up to 7{,}042 nuisance
 alerts per hour at 30\,FPS. Scaling negative frames to 80\% cuts
-alert rates by up to 96.8\% without changing a single model
+alert rates by up to 96.1\% without changing a single model
 parameter. This analysis formalizes a key principle for edge AIoT
 systems: \textbf{inference latency is architecture-bound; operational
 reliability is curation-bound.} YOLOv10n achieves the fastest
 inference ($7.7$\,ms, 129\,FPS), but without negative training its
-alert rate ($5{,}977$/hr at 30\,FPS) makes it impractical for
+alert rate ($5{,}014$/hr at 30\,FPS) makes it impractical for
 continuous deployment. Data curation is the decisive design lever.
 
 %==================================================================
