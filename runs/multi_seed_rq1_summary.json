@@ -1,0 +1,1635 @@
+{
+  "yolo11n": [
+    {
+      "split": "train_00_pos_only",
+      "ratio": "0%",
+      "map50_mean": 0.9824,
+      "map50_std": 0.0077,
+      "map50_95_mean": 0.757,
+      "map50_95_std": 0.0045,
+      "precision_mean": 0.8576,
+      "recall_mean": 0.9787,
+      "fp_per_1k_mean": 67.22,
+      "fp_per_1k_std": 10.56,
+      "raw_fps_avg": 85.5,
+      "seed42": {
+        "split": "train_00_pos_only",
+        "ratio": "0%",
+        "train_time_minutes": 58.52,
+        "val_precision": 0.8813,
+        "val_recall": 0.9762,
+        "val_map50": 0.952,
+        "val_map50_95": 0.7246,
+        "val_fp_per_1k": 69.97,
+        "val_total_fps": 89,
+        "test_precision": 0.8806,
+        "test_recall": 0.9741,
+        "test_map50": 0.9769,
+        "test_map50_95": 0.7538,
+        "test_fp_per_1k": 59.75,
+        "total_test_fps": 76,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8403,
+              "map50_95": 0.6032
+            },
+            "hand_over_mouth": {
+              "map50": 0.981,
+              "map50_95": 0.7764
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7575
+            },
+            "phone_use": {
+              "map50": 0.9917,
+              "map50_95": 0.7612
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9247,
+              "map50_95": 0.6716
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.8196
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.779
+            },
+            "phone_use": {
+              "map50": 0.9931,
+              "map50_95": 0.7451
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_00_pos_only",
+        "ratio": "0%",
+        "train_time_minutes": 58.43,
+        "val_precision": 0.835,
+        "val_recall": 0.9444,
+        "val_map50": 0.9488,
+        "val_map50_95": 0.7206,
+        "val_fp_per_1k": 94.34,
+        "val_total_fps": 120,
+        "test_precision": 0.8345,
+        "test_recall": 0.9832,
+        "test_map50": 0.9878,
+        "test_map50_95": 0.7602,
+        "test_fp_per_1k": 74.69,
+        "total_test_fps": 95,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8394,
+              "map50_95": 0.6106
+            },
+            "hand_over_mouth": {
+              "map50": 0.9776,
+              "map50_95": 0.7744
+            },
+            "drinking": {
+              "map50": 0.9846,
+              "map50_95": 0.7335
+            },
+            "phone_use": {
+              "map50": 0.9937,
+              "map50_95": 0.7638
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9692,
+              "map50_95": 0.6863
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.8148
+            },
+            "drinking": {
+              "map50": 0.9939,
+              "map50_95": 0.7833
+            },
+            "phone_use": {
+              "map50": 0.9932,
+              "map50_95": 0.7562
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_20_low_neg",
+      "ratio": "20%",
+      "map50_mean": 0.9838,
+      "map50_std": 0.0057,
+      "map50_95_mean": 0.7524,
+      "map50_95_std": 0.0008,
+      "precision_mean": 0.9283,
+      "recall_mean": 0.9814,
+      "fp_per_1k_mean": 31.05,
+      "fp_per_1k_std": 0.56,
+      "raw_fps_avg": 39.5,
+      "seed42": {
+        "split": "train_20_low_neg",
+        "ratio": "20%",
+        "train_time_minutes": 66.6,
+        "val_precision": 0.9033,
+        "val_recall": 0.9816,
+        "val_map50": 0.9673,
+        "val_map50_95": 0.7362,
+        "val_fp_per_1k": 24.37,
+        "val_total_fps": 31,
+        "test_precision": 0.9202,
+        "test_recall": 0.9728,
+        "test_map50": 0.9878,
+        "test_map50_95": 0.7518,
+        "test_fp_per_1k": 31.45,
+        "total_test_fps": 40,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.9073,
+              "map50_95": 0.6618
+            },
+            "hand_over_mouth": {
+              "map50": 0.9763,
+              "map50_95": 0.7389
+            },
+            "drinking": {
+              "map50": 0.9909,
+              "map50_95": 0.7794
+            },
+            "phone_use": {
+              "map50": 0.9945,
+              "map50_95": 0.7646
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9807,
+              "map50_95": 0.6973
+            },
+            "hand_over_mouth": {
+              "map50": 0.9813,
+              "map50_95": 0.7917
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7669
+            },
+            "phone_use": {
+              "map50": 0.9943,
+              "map50_95": 0.7512
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_20_low_neg",
+        "ratio": "20%",
+        "train_time_minutes": 68.1,
+        "val_precision": 0.8914,
+        "val_recall": 0.9615,
+        "val_map50": 0.9489,
+        "val_map50_95": 0.7033,
+        "val_fp_per_1k": 25.94,
+        "val_total_fps": 33,
+        "test_precision": 0.9364,
+        "test_recall": 0.99,
+        "test_map50": 0.9797,
+        "test_map50_95": 0.753,
+        "test_fp_per_1k": 30.66,
+        "total_test_fps": 39,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8315,
+              "map50_95": 0.6099
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.7368
+            },
+            "drinking": {
+              "map50": 0.9742,
+              "map50_95": 0.7179
+            },
+            "phone_use": {
+              "map50": 0.995,
+              "map50_95": 0.7485
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9365,
+              "map50_95": 0.6768
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.7971
+            },
+            "drinking": {
+              "map50": 0.9924,
+              "map50_95": 0.7906
+            },
+            "phone_use": {
+              "map50": 0.9948,
+              "map50_95": 0.7475
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_40_mod_neg",
+      "ratio": "40%",
+      "map50_mean": 0.9919,
+      "map50_std": 0.0019,
+      "map50_95_mean": 0.7711,
+      "map50_95_std": 0.0017,
+      "precision_mean": 0.9308,
+      "recall_mean": 0.9831,
+      "fp_per_1k_mean": 22.01,
+      "fp_per_1k_std": 3.34,
+      "raw_fps_avg": 28.0,
+      "seed42": {
+        "split": "train_40_mod_neg",
+        "ratio": "40%",
+        "train_time_minutes": 84.02,
+        "val_precision": 0.9099,
+        "val_recall": 0.9627,
+        "val_map50": 0.9597,
+        "val_map50_95": 0.7253,
+        "val_fp_per_1k": 18.87,
+        "val_total_fps": 24,
+        "test_precision": 0.9376,
+        "test_recall": 0.9839,
+        "test_map50": 0.9932,
+        "test_map50_95": 0.7699,
+        "test_fp_per_1k": 24.37,
+        "total_test_fps": 31,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8692,
+              "map50_95": 0.6314
+            },
+            "hand_over_mouth": {
+              "map50": 0.981,
+              "map50_95": 0.7567
+            },
+            "drinking": {
+              "map50": 0.9939,
+              "map50_95": 0.7517
+            },
+            "phone_use": {
+              "map50": 0.9948,
+              "map50_95": 0.7614
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9883,
+              "map50_95": 0.7211
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.8251
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7785
+            },
+            "phone_use": {
+              "map50": 0.9944,
+              "map50_95": 0.7548
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_40_mod_neg",
+        "ratio": "40%",
+        "train_time_minutes": 88.0,
+        "val_precision": 0.9034,
+        "val_recall": 0.9793,
+        "val_map50": 0.9657,
+        "val_map50_95": 0.7207,
+        "val_fp_per_1k": 18.08,
+        "val_total_fps": 23,
+        "test_precision": 0.924,
+        "test_recall": 0.9823,
+        "test_map50": 0.9905,
+        "test_map50_95": 0.7723,
+        "test_fp_per_1k": 19.65,
+        "total_test_fps": 25,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8781,
+              "map50_95": 0.6352
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.7276
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.749
+            },
+            "phone_use": {
+              "map50": 0.9947,
+              "map50_95": 0.7711
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9818,
+              "map50_95": 0.7249
+            },
+            "hand_over_mouth": {
+              "map50": 0.9903,
+              "map50_95": 0.8249
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7837
+            },
+            "phone_use": {
+              "map50": 0.9948,
+              "map50_95": 0.7559
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_60_high_neg",
+      "ratio": "60%",
+      "map50_mean": 0.9899,
+      "map50_std": 0.0025,
+      "map50_95_mean": 0.7723,
+      "map50_95_std": 0.0034,
+      "precision_mean": 0.9468,
+      "recall_mean": 0.9806,
+      "fp_per_1k_mean": 9.83,
+      "fp_per_1k_std": 3.89,
+      "raw_fps_avg": 12.5,
+      "seed42": {
+        "split": "train_60_high_neg",
+        "ratio": "60%",
+        "train_time_minutes": 122.03,
+        "val_precision": 0.9192,
+        "val_recall": 0.9697,
+        "val_map50": 0.969,
+        "val_map50_95": 0.7267,
+        "val_fp_per_1k": 15.72,
+        "val_total_fps": 20,
+        "test_precision": 0.9248,
+        "test_recall": 0.992,
+        "test_map50": 0.9881,
+        "test_map50_95": 0.7747,
+        "test_fp_per_1k": 12.58,
+        "total_test_fps": 16,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8976,
+              "map50_95": 0.6382
+            },
+            "hand_over_mouth": {
+              "map50": 0.9903,
+              "map50_95": 0.7711
+            },
+            "drinking": {
+              "map50": 0.9939,
+              "map50_95": 0.741
+            },
+            "phone_use": {
+              "map50": 0.9941,
+              "map50_95": 0.7564
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9686,
+              "map50_95": 0.733
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.8015
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.8197
+            },
+            "phone_use": {
+              "map50": 0.9939,
+              "map50_95": 0.7448
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_60_high_neg",
+        "ratio": "60%",
+        "train_time_minutes": 123.68,
+        "val_precision": 0.928,
+        "val_recall": 0.9786,
+        "val_map50": 0.9703,
+        "val_map50_95": 0.7301,
+        "val_fp_per_1k": 9.43,
+        "val_total_fps": 12,
+        "test_precision": 0.9689,
+        "test_recall": 0.9691,
+        "test_map50": 0.9916,
+        "test_map50_95": 0.7699,
+        "test_fp_per_1k": 7.08,
+        "total_test_fps": 9,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8964,
+              "map50_95": 0.6595
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.7631
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7369
+            },
+            "phone_use": {
+              "map50": 0.9946,
+              "map50_95": 0.761
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9818,
+              "map50_95": 0.7241
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.8135
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7988
+            },
+            "phone_use": {
+              "map50": 0.9948,
+              "map50_95": 0.7431
+            }
+          }
+        }
+      }
+    }
+  ],
+  "yolo26n": [
+    {
+      "split": "train_00_pos_only",
+      "ratio": "0%",
+      "map50_mean": 0.917,
+      "map50_std": 0.0008,
+      "map50_95_mean": 0.7086,
+      "map50_95_std": 0.0013,
+      "precision_mean": 0.8557,
+      "recall_mean": 0.9105,
+      "fp_per_1k_mean": 80.59,
+      "fp_per_1k_std": 26.13,
+      "raw_fps_avg": 102.5,
+      "seed42": {
+        "split": "train_00_pos_only",
+        "ratio": "0%",
+        "train_time_minutes": 65.46,
+        "val_precision": 0.8523,
+        "val_recall": 0.9276,
+        "val_map50": 0.9161,
+        "val_map50_95": 0.6855,
+        "val_fp_per_1k": 109.28,
+        "val_total_fps": 139,
+        "test_precision": 0.8649,
+        "test_recall": 0.8988,
+        "test_map50": 0.9176,
+        "test_map50_95": 0.7095,
+        "test_fp_per_1k": 99.06,
+        "total_test_fps": 126,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.7078,
+              "map50_95": 0.4816
+            },
+            "hand_over_mouth": {
+              "map50": 0.9717,
+              "map50_95": 0.7425
+            },
+            "drinking": {
+              "map50": 0.991,
+              "map50_95": 0.7612
+            },
+            "phone_use": {
+              "map50": 0.9938,
+              "map50_95": 0.7569
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.7095,
+              "map50_95": 0.525
+            },
+            "hand_over_mouth": {
+              "map50": 0.9717,
+              "map50_95": 0.7775
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7901
+            },
+            "phone_use": {
+              "map50": 0.9941,
+              "map50_95": 0.7453
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_00_pos_only",
+        "ratio": "0%",
+        "train_time_minutes": 66.22,
+        "val_precision": 0.88,
+        "val_recall": 0.871,
+        "val_map50": 0.9283,
+        "val_map50_95": 0.683,
+        "val_fp_per_1k": 87.26,
+        "val_total_fps": 111,
+        "test_precision": 0.8465,
+        "test_recall": 0.9223,
+        "test_map50": 0.9164,
+        "test_map50_95": 0.7076,
+        "test_fp_per_1k": 62.11,
+        "total_test_fps": 79,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.7678,
+              "map50_95": 0.5757
+            },
+            "hand_over_mouth": {
+              "map50": 0.9617,
+              "map50_95": 0.6787
+            },
+            "drinking": {
+              "map50": 0.9904,
+              "map50_95": 0.7293
+            },
+            "phone_use": {
+              "map50": 0.9932,
+              "map50_95": 0.7481
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.7397,
+              "map50_95": 0.5779
+            },
+            "hand_over_mouth": {
+              "map50": 0.9387,
+              "map50_95": 0.7588
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.768
+            },
+            "phone_use": {
+              "map50": 0.9921,
+              "map50_95": 0.7258
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_20_low_neg",
+      "ratio": "20%",
+      "map50_mean": 0.9729,
+      "map50_std": 0.0021,
+      "map50_95_mean": 0.7546,
+      "map50_95_std": 0.0122,
+      "precision_mean": 0.9306,
+      "recall_mean": 0.9763,
+      "fp_per_1k_mean": 16.9,
+      "fp_per_1k_std": 1.67,
+      "raw_fps_avg": 21.5,
+      "seed42": {
+        "split": "train_20_low_neg",
+        "ratio": "20%",
+        "train_time_minutes": 76.87,
+        "val_precision": 0.8872,
+        "val_recall": 0.9663,
+        "val_map50": 0.9417,
+        "val_map50_95": 0.716,
+        "val_fp_per_1k": 14.94,
+        "val_total_fps": 19,
+        "test_precision": 0.939,
+        "test_recall": 0.9785,
+        "test_map50": 0.9744,
+        "test_map50_95": 0.7632,
+        "test_fp_per_1k": 15.72,
+        "total_test_fps": 20,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.7818,
+              "map50_95": 0.5796
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.7516
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7777
+            },
+            "phone_use": {
+              "map50": 0.9949,
+              "map50_95": 0.7551
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.913,
+              "map50_95": 0.6716
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.8424
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7872
+            },
+            "phone_use": {
+              "map50": 0.9947,
+              "map50_95": 0.7516
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_20_low_neg",
+        "ratio": "20%",
+        "train_time_minutes": 78.91,
+        "val_precision": 0.8852,
+        "val_recall": 0.9723,
+        "val_map50": 0.9321,
+        "val_map50_95": 0.6945,
+        "val_fp_per_1k": 15.72,
+        "val_total_fps": 20,
+        "test_precision": 0.9223,
+        "test_recall": 0.9741,
+        "test_map50": 0.9715,
+        "test_map50_95": 0.746,
+        "test_fp_per_1k": 18.08,
+        "total_test_fps": 23,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.7668,
+              "map50_95": 0.5313
+            },
+            "hand_over_mouth": {
+              "map50": 0.981,
+              "map50_95": 0.7326
+            },
+            "drinking": {
+              "map50": 0.9865,
+              "map50_95": 0.7664
+            },
+            "phone_use": {
+              "map50": 0.994,
+              "map50_95": 0.7475
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9202,
+              "map50_95": 0.6304
+            },
+            "hand_over_mouth": {
+              "map50": 0.9763,
+              "map50_95": 0.832
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7779
+            },
+            "phone_use": {
+              "map50": 0.9943,
+              "map50_95": 0.7436
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_40_mod_neg",
+      "ratio": "40%",
+      "map50_mean": 0.9726,
+      "map50_std": 0.0148,
+      "map50_95_mean": 0.7388,
+      "map50_95_std": 0.0237,
+      "precision_mean": 0.9224,
+      "recall_mean": 0.9519,
+      "fp_per_1k_mean": 9.43,
+      "fp_per_1k_std": 5.56,
+      "raw_fps_avg": 12.0,
+      "seed42": {
+        "split": "train_40_mod_neg",
+        "ratio": "40%",
+        "train_time_minutes": 97.47,
+        "val_precision": 0.927,
+        "val_recall": 0.9253,
+        "val_map50": 0.9619,
+        "val_map50_95": 0.7345,
+        "val_fp_per_1k": 7.08,
+        "val_total_fps": 9,
+        "test_precision": 0.9411,
+        "test_recall": 0.9653,
+        "test_map50": 0.983,
+        "test_map50_95": 0.7555,
+        "test_fp_per_1k": 5.5,
+        "total_test_fps": 7,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.871,
+              "map50_95": 0.6362
+            },
+            "hand_over_mouth": {
+              "map50": 0.9903,
+              "map50_95": 0.7458
+            },
+            "drinking": {
+              "map50": 0.9913,
+              "map50_95": 0.8034
+            },
+            "phone_use": {
+              "map50": 0.9949,
+              "map50_95": 0.7525
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9524,
+              "map50_95": 0.6877
+            },
+            "hand_over_mouth": {
+              "map50": 0.9903,
+              "map50_95": 0.8073
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7912
+            },
+            "phone_use": {
+              "map50": 0.9943,
+              "map50_95": 0.7359
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_40_mod_neg",
+        "ratio": "40%",
+        "train_time_minutes": 104.24,
+        "val_precision": 0.9017,
+        "val_recall": 0.9391,
+        "val_map50": 0.959,
+        "val_map50_95": 0.7119,
+        "val_fp_per_1k": 17.3,
+        "val_total_fps": 22,
+        "test_precision": 0.9038,
+        "test_recall": 0.9385,
+        "test_map50": 0.9621,
+        "test_map50_95": 0.722,
+        "test_fp_per_1k": 13.36,
+        "total_test_fps": 17,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8746,
+              "map50_95": 0.6019
+            },
+            "hand_over_mouth": {
+              "map50": 0.9763,
+              "map50_95": 0.7361
+            },
+            "drinking": {
+              "map50": 0.9909,
+              "map50_95": 0.7569
+            },
+            "phone_use": {
+              "map50": 0.9944,
+              "map50_95": 0.7527
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.8789,
+              "map50_95": 0.6056
+            },
+            "hand_over_mouth": {
+              "map50": 0.9813,
+              "map50_95": 0.783
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7666
+            },
+            "phone_use": {
+              "map50": 0.9934,
+              "map50_95": 0.7328
+            }
+          }
+        }
+      }
+    }
+  ],
+  "yolo12n": [
+    {
+      "split": "train_00_pos_only",
+      "ratio": "0%",
+      "map50_mean": 0.991,
+      "map50_std": 0.0016,
+      "map50_95_mean": 0.7496,
+      "map50_95_std": 0.0222,
+      "precision_mean": 0.9228,
+      "recall_mean": 0.9823,
+      "fp_per_1k_mean": 45.2,
+      "fp_per_1k_std": 9.45,
+      "raw_fps_avg": 57.5,
+      "seed42": {
+        "split": "train_00_pos_only",
+        "ratio": "0%",
+        "train_time_minutes": 76.71,
+        "val_precision": 0.8971,
+        "val_recall": 0.9746,
+        "val_map50": 0.9472,
+        "val_map50_95": 0.7033,
+        "val_fp_per_1k": 70.75,
+        "val_total_fps": 90,
+        "test_precision": 0.9096,
+        "test_recall": 0.984,
+        "test_map50": 0.9899,
+        "test_map50_95": 0.7653,
+        "test_fp_per_1k": 51.89,
+        "total_test_fps": 66,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8325,
+              "map50_95": 0.5786
+            },
+            "hand_over_mouth": {
+              "map50": 0.967,
+              "map50_95": 0.7288
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7467
+            },
+            "phone_use": {
+              "map50": 0.9942,
+              "map50_95": 0.7592
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9844,
+              "map50_95": 0.7335
+            },
+            "hand_over_mouth": {
+              "map50": 0.9857,
+              "map50_95": 0.8003
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7879
+            },
+            "phone_use": {
+              "map50": 0.9946,
+              "map50_95": 0.7396
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_00_pos_only",
+        "ratio": "0%",
+        "train_time_minutes": 79.69,
+        "val_precision": 0.8798,
+        "val_recall": 0.9472,
+        "val_map50": 0.9594,
+        "val_map50_95": 0.7076,
+        "val_fp_per_1k": 47.17,
+        "val_total_fps": 60,
+        "test_precision": 0.936,
+        "test_recall": 0.9805,
+        "test_map50": 0.9922,
+        "test_map50_95": 0.7339,
+        "test_fp_per_1k": 38.52,
+        "total_test_fps": 49,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8823,
+              "map50_95": 0.6148
+            },
+            "hand_over_mouth": {
+              "map50": 0.9766,
+              "map50_95": 0.7514
+            },
+            "drinking": {
+              "map50": 0.9879,
+              "map50_95": 0.7334
+            },
+            "phone_use": {
+              "map50": 0.9906,
+              "map50_95": 0.731
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9883,
+              "map50_95": 0.6658
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.7915
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7544
+            },
+            "phone_use": {
+              "map50": 0.9903,
+              "map50_95": 0.724
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_20_low_neg",
+      "ratio": "20%",
+      "map50_mean": 0.9757,
+      "map50_std": 0.0103,
+      "map50_95_mean": 0.7449,
+      "map50_95_std": 0.0046,
+      "precision_mean": 0.8954,
+      "recall_mean": 0.9863,
+      "fp_per_1k_mean": 35.77,
+      "fp_per_1k_std": 0.55,
+      "raw_fps_avg": 45.5,
+      "seed42": {
+        "split": "train_20_low_neg",
+        "ratio": "20%",
+        "train_time_minutes": 91.09,
+        "val_precision": 0.9023,
+        "val_recall": 0.965,
+        "val_map50": 0.9447,
+        "val_map50_95": 0.6945,
+        "val_fp_per_1k": 34.59,
+        "val_total_fps": 44,
+        "test_precision": 0.9147,
+        "test_recall": 0.9837,
+        "test_map50": 0.983,
+        "test_map50_95": 0.7481,
+        "test_fp_per_1k": 35.38,
+        "total_test_fps": 45,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8713,
+              "map50_95": 0.6494
+            },
+            "hand_over_mouth": {
+              "map50": 0.9523,
+              "map50_95": 0.6864
+            },
+            "drinking": {
+              "map50": 0.9616,
+              "map50_95": 0.6889
+            },
+            "phone_use": {
+              "map50": 0.9935,
+              "map50_95": 0.7535
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9608,
+              "map50_95": 0.6917
+            },
+            "hand_over_mouth": {
+              "map50": 0.9857,
+              "map50_95": 0.793
+            },
+            "drinking": {
+              "map50": 0.991,
+              "map50_95": 0.767
+            },
+            "phone_use": {
+              "map50": 0.9946,
+              "map50_95": 0.7406
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_20_low_neg",
+        "ratio": "20%",
+        "train_time_minutes": 91.29,
+        "val_precision": 0.886,
+        "val_recall": 0.9687,
+        "val_map50": 0.9569,
+        "val_map50_95": 0.7094,
+        "val_fp_per_1k": 33.02,
+        "val_total_fps": 42,
+        "test_precision": 0.8762,
+        "test_recall": 0.9889,
+        "test_map50": 0.9684,
+        "test_map50_95": 0.7416,
+        "test_fp_per_1k": 36.16,
+        "total_test_fps": 46,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8704,
+              "map50_95": 0.6155
+            },
+            "hand_over_mouth": {
+              "map50": 0.9763,
+              "map50_95": 0.7498
+            },
+            "drinking": {
+              "map50": 0.9871,
+              "map50_95": 0.7134
+            },
+            "phone_use": {
+              "map50": 0.9938,
+              "map50_95": 0.7588
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9215,
+              "map50_95": 0.6875
+            },
+            "hand_over_mouth": {
+              "map50": 0.9629,
+              "map50_95": 0.7813
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7592
+            },
+            "phone_use": {
+              "map50": 0.9942,
+              "map50_95": 0.7384
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_40_mod_neg",
+      "ratio": "40%",
+      "map50_mean": 0.9866,
+      "map50_std": 0.0023,
+      "map50_95_mean": 0.7659,
+      "map50_95_std": 0.016,
+      "precision_mean": 0.9199,
+      "recall_mean": 0.9949,
+      "fp_per_1k_mean": 18.86,
+      "fp_per_1k_std": 1.11,
+      "raw_fps_avg": 24.0,
+      "seed42": {
+        "split": "train_40_mod_neg",
+        "ratio": "40%",
+        "train_time_minutes": 115.25,
+        "val_precision": 0.9186,
+        "val_recall": 0.9675,
+        "val_map50": 0.9626,
+        "val_map50_95": 0.7095,
+        "val_fp_per_1k": 18.08,
+        "val_total_fps": 23,
+        "test_precision": 0.915,
+        "test_recall": 0.9959,
+        "test_map50": 0.9882,
+        "test_map50_95": 0.7772,
+        "test_fp_per_1k": 18.08,
+        "total_test_fps": 23,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8822,
+              "map50_95": 0.6333
+            },
+            "hand_over_mouth": {
+              "map50": 0.9903,
+              "map50_95": 0.6993
+            },
+            "drinking": {
+              "map50": 0.9832,
+              "map50_95": 0.7524
+            },
+            "phone_use": {
+              "map50": 0.9945,
+              "map50_95": 0.7529
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9686,
+              "map50_95": 0.7291
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.8402
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.787
+            },
+            "phone_use": {
+              "map50": 0.9942,
+              "map50_95": 0.7524
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_40_mod_neg",
+        "ratio": "40%",
+        "train_time_minutes": 117.51,
+        "val_precision": 0.8899,
+        "val_recall": 0.9754,
+        "val_map50": 0.9678,
+        "val_map50_95": 0.7128,
+        "val_fp_per_1k": 16.51,
+        "val_total_fps": 21,
+        "test_precision": 0.9248,
+        "test_recall": 0.9938,
+        "test_map50": 0.985,
+        "test_map50_95": 0.7546,
+        "test_fp_per_1k": 19.65,
+        "total_test_fps": 25,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.9034,
+              "map50_95": 0.6141
+            },
+            "hand_over_mouth": {
+              "map50": 0.981,
+              "map50_95": 0.732
+            },
+            "drinking": {
+              "map50": 0.9924,
+              "map50_95": 0.7377
+            },
+            "phone_use": {
+              "map50": 0.9943,
+              "map50_95": 0.7677
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.9554,
+              "map50_95": 0.7012
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.7973
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7806
+            },
+            "phone_use": {
+              "map50": 0.9946,
+              "map50_95": 0.7391
+            }
+          }
+        }
+      }
+    }
+  ],
+  "yolov10n": [
+    {
+      "split": "train_00_pos_only",
+      "ratio": "0%",
+      "map50_mean": 0.9423,
+      "map50_std": 0.0321,
+      "map50_95_mean": 0.7287,
+      "map50_95_std": 0.023,
+      "precision_mean": 0.9065,
+      "recall_mean": 0.8831,
+      "fp_per_1k_mean": 57.39,
+      "fp_per_1k_std": 15.57,
+      "raw_fps_avg": 73.0,
+      "seed42": {
+        "split": "train_00_pos_only",
+        "ratio": "0%",
+        "train_time_minutes": 71.1,
+        "val_precision": 0.8956,
+        "val_recall": 0.8699,
+        "val_map50": 0.9429,
+        "val_map50_95": 0.6842,
+        "val_fp_per_1k": 70.75,
+        "val_total_fps": 90,
+        "test_precision": 0.9016,
+        "test_recall": 0.8361,
+        "test_map50": 0.9196,
+        "test_map50_95": 0.7124,
+        "test_fp_per_1k": 68.4,
+        "total_test_fps": 87,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8389,
+              "map50_95": 0.5949
+            },
+            "hand_over_mouth": {
+              "map50": 0.9516,
+              "map50_95": 0.656
+            },
+            "drinking": {
+              "map50": 0.9929,
+              "map50_95": 0.7391
+            },
+            "phone_use": {
+              "map50": 0.9883,
+              "map50_95": 0.747
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.7378,
+              "map50_95": 0.5434
+            },
+            "hand_over_mouth": {
+              "map50": 0.9532,
+              "map50_95": 0.7583
+            },
+            "drinking": {
+              "map50": 0.9939,
+              "map50_95": 0.8088
+            },
+            "phone_use": {
+              "map50": 0.9936,
+              "map50_95": 0.7392
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_00_pos_only",
+        "ratio": "0%",
+        "train_time_minutes": 71.6,
+        "val_precision": 0.8389,
+        "val_recall": 0.9667,
+        "val_map50": 0.9171,
+        "val_map50_95": 0.6828,
+        "val_fp_per_1k": 37.74,
+        "val_total_fps": 48,
+        "test_precision": 0.9115,
+        "test_recall": 0.93,
+        "test_map50": 0.965,
+        "test_map50_95": 0.7449,
+        "test_fp_per_1k": 46.38,
+        "total_test_fps": 59,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.7079,
+              "map50_95": 0.5026
+            },
+            "hand_over_mouth": {
+              "map50": 0.981,
+              "map50_95": 0.7438
+            },
+            "drinking": {
+              "map50": 0.9854,
+              "map50_95": 0.7366
+            },
+            "phone_use": {
+              "map50": 0.994,
+              "map50_95": 0.7483
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.8964,
+              "map50_95": 0.6556
+            },
+            "hand_over_mouth": {
+              "map50": 0.9744,
+              "map50_95": 0.7881
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7934
+            },
+            "phone_use": {
+              "map50": 0.9941,
+              "map50_95": 0.7427
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_20_low_neg",
+      "ratio": "20%",
+      "map50_mean": 0.9423,
+      "map50_std": 0.0052,
+      "map50_95_mean": 0.727,
+      "map50_95_std": 0.0025,
+      "precision_mean": 0.8833,
+      "recall_mean": 0.94,
+      "fp_per_1k_mean": 21.23,
+      "fp_per_1k_std": 3.33,
+      "raw_fps_avg": 27.0,
+      "seed42": {
+        "split": "train_20_low_neg",
+        "ratio": "20%",
+        "train_time_minutes": 88.1,
+        "val_precision": 0.9019,
+        "val_recall": 0.954,
+        "val_map50": 0.955,
+        "val_map50_95": 0.7113,
+        "val_fp_per_1k": 20.44,
+        "val_total_fps": 26,
+        "test_precision": 0.9264,
+        "test_recall": 0.9083,
+        "test_map50": 0.9459,
+        "test_map50_95": 0.7253,
+        "test_fp_per_1k": 23.58,
+        "total_test_fps": 30,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8641,
+              "map50_95": 0.6135
+            },
+            "hand_over_mouth": {
+              "map50": 0.9667,
+              "map50_95": 0.7208
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7641
+            },
+            "phone_use": {
+              "map50": 0.9943,
+              "map50_95": 0.7467
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.8693,
+              "map50_95": 0.6373
+            },
+            "hand_over_mouth": {
+              "map50": 0.9287,
+              "map50_95": 0.7447
+            },
+            "drinking": {
+              "map50": 0.9919,
+              "map50_95": 0.7843
+            },
+            "phone_use": {
+              "map50": 0.9936,
+              "map50_95": 0.7349
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_20_low_neg",
+        "ratio": "20%",
+        "train_time_minutes": 85.39,
+        "val_precision": 0.9023,
+        "val_recall": 0.9483,
+        "val_map50": 0.9539,
+        "val_map50_95": 0.7083,
+        "val_fp_per_1k": 11.01,
+        "val_total_fps": 14,
+        "test_precision": 0.8402,
+        "test_recall": 0.9717,
+        "test_map50": 0.9386,
+        "test_map50_95": 0.7288,
+        "test_fp_per_1k": 18.87,
+        "total_test_fps": 24,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8704,
+              "map50_95": 0.6152
+            },
+            "hand_over_mouth": {
+              "map50": 0.957,
+              "map50_95": 0.7228
+            },
+            "drinking": {
+              "map50": 0.9939,
+              "map50_95": 0.7406
+            },
+            "phone_use": {
+              "map50": 0.9943,
+              "map50_95": 0.7543
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.7909,
+              "map50_95": 0.5669
+            },
+            "hand_over_mouth": {
+              "map50": 0.9776,
+              "map50_95": 0.8155
+            },
+            "drinking": {
+              "map50": 0.991,
+              "map50_95": 0.7828
+            },
+            "phone_use": {
+              "map50": 0.9948,
+              "map50_95": 0.7499
+            }
+          }
+        }
+      }
+    },
+    {
+      "split": "train_40_mod_neg",
+      "ratio": "40%",
+      "map50_mean": 0.9642,
+      "map50_std": 0.0037,
+      "map50_95_mean": 0.7568,
+      "map50_95_std": 0.0197,
+      "precision_mean": 0.8813,
+      "recall_mean": 0.9788,
+      "fp_per_1k_mean": 14.94,
+      "fp_per_1k_std": 1.11,
+      "raw_fps_avg": 19.0,
+      "seed42": {
+        "split": "train_40_mod_neg",
+        "ratio": "40%",
+        "train_time_minutes": 106.97,
+        "val_precision": 0.8934,
+        "val_recall": 0.9583,
+        "val_map50": 0.9558,
+        "val_map50_95": 0.7074,
+        "val_fp_per_1k": 16.51,
+        "val_total_fps": 21,
+        "test_precision": 0.8918,
+        "test_recall": 0.9765,
+        "test_map50": 0.9615,
+        "test_map50_95": 0.7428,
+        "test_fp_per_1k": 14.15,
+        "total_test_fps": 18,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.857,
+              "map50_95": 0.607
+            },
+            "hand_over_mouth": {
+              "map50": 0.981,
+              "map50_95": 0.7174
+            },
+            "drinking": {
+              "map50": 0.9909,
+              "map50_95": 0.7507
+            },
+            "phone_use": {
+              "map50": 0.9942,
+              "map50_95": 0.7547
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.8661,
+              "map50_95": 0.6408
+            },
+            "hand_over_mouth": {
+              "map50": 0.9903,
+              "map50_95": 0.8307
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7463
+            },
+            "phone_use": {
+              "map50": 0.9946,
+              "map50_95": 0.7535
+            }
+          }
+        }
+      },
+      "seed43": {
+        "split": "train_40_mod_neg",
+        "ratio": "40%",
+        "train_time_minutes": 108.96,
+        "val_precision": 0.8537,
+        "val_recall": 0.9382,
+        "val_map50": 0.9462,
+        "val_map50_95": 0.7034,
+        "val_fp_per_1k": 13.36,
+        "val_total_fps": 17,
+        "test_precision": 0.8708,
+        "test_recall": 0.981,
+        "test_map50": 0.9668,
+        "test_map50_95": 0.7707,
+        "test_fp_per_1k": 15.72,
+        "total_test_fps": 20,
+        "test_neg_frames": 1272,
+        "per_class": {
+          "val": {
+            "yawning": {
+              "map50": 0.8397,
+              "map50_95": 0.5806
+            },
+            "hand_over_mouth": {
+              "map50": 0.9726,
+              "map50_95": 0.7616
+            },
+            "drinking": {
+              "map50": 0.9775,
+              "map50_95": 0.7124
+            },
+            "phone_use": {
+              "map50": 0.9949,
+              "map50_95": 0.7591
+            }
+          },
+          "test": {
+            "yawning": {
+              "map50": 0.8829,
+              "map50_95": 0.6898
+            },
+            "hand_over_mouth": {
+              "map50": 0.995,
+              "map50_95": 0.8475
+            },
+            "drinking": {
+              "map50": 0.995,
+              "map50_95": 0.7961
+            },
+            "phone_use": {
+              "map50": 0.9942,
+              "map50_95": 0.7493
+            }
+          }
+        }
+      }
+    }
+  ]
+}

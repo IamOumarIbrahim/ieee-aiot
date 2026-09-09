@@ -300,6 +300,11 @@ def main():
             save_summary_outputs(summary, project_dir, model_stem)
 
         else:
+            ckpt_path = project_dir / split_name / "weights" / "best.pt"
+            if ckpt_path.exists() and split_name in existing_runs:
+                print(f"\n[{idx}/{len(selected_splits)}] Split {split_name} already completed ({existing_runs[split_name].get('train_time_minutes', '?')}m). Skipping.")
+                continue
+
             print(f"\n[{idx}/{len(selected_splits)}] Launching Run: {split_name} ({ratio_label} Negatives)")
             start_time = time.time()
 

@@ -31,12 +31,13 @@ MODELS = [
 def parse_args():
     parser = argparse.ArgumentParser(description="Phase 4 Multi-Seed Sweep Runner")
     parser.add_argument("--models", type=str, default="yolo11n,yolo26n,yolo12n,yolov10n", help="Comma-separated model stems to run")
+    parser.add_argument("--splits", type=str, default="00,20,40", help="Comma-separated split keys (default: 00,20,40 for Option 2)")
     parser.add_argument("--seed", type=int, default=43, help="Second seed (default: 43)")
     parser.add_argument("--device", type=str, default="0", help="CUDA device index")
     parser.add_argument("--aggregate-only", action="store_true", help="Only aggregate existing seed 42 & 43 results")
     return parser.parse_args()
 
-def run_model_sweep(model_file, seed, device):
+def run_model_sweep(model_file, seed, splits, device):
     stem = Path(model_file).stem
     project_dir = REPO_ROOT / "runs" / f"{stem}_ratio_sweep_seed{seed}"
     cmd = [
@@ -45,7 +46,7 @@ def run_model_sweep(model_file, seed, device):
         "--model", str(REPO_ROOT / model_file),
         "--seed", str(seed),
         "--project", str(project_dir),
-        "--splits", "all",
+        "--splits", splits,
         "--device", str(device)
     ]
     print(f"\n{'='*70}")
@@ -118,7 +119,7 @@ def main():
             stem = Path(m_file).stem
             if stem not in target_stems:
                 continue
-            run_model_sweep(m_file, seed=args.seed, device=args.device)
+            run_model_sweep(m_file, seed=args.seed, splits=args.splits, device=args.device)
             
     # Aggregation
     print("\n" + "="*70)
