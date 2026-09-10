@@ -17,23 +17,23 @@
 
 \begin{document}
 
-\title{Reducing False Alarms in Edge Driver Monitoring Systems via Negative-Frame Curation}
+\title{Reducing False Alarms in Edge Driver Monitoring Systems through Negative Frame Curation and Hard Negative Mining}
 
 \author{\IEEEauthorblockN{Author names are omitted for double-blind review}
-\thanks{This work involved human subjects in its research. The author(s) confirm(s) that all human subject research procedures and protocols are exempt from review board approval. This study reuses publicly available, de-identified data from the Driver Monitoring Dataset (DMD) and did not involve new data collection from human participants.}}
+\thanks{This study involves secondary analysis of human subject data. The authors confirm that all experimental protocols are exempt from institutional review board oversight (under category 45 CFR 46.104(d)(4) for publicly available secondary research data). All facial image excerpts reuse data from the open-access Driver Monitoring Dataset (DMD) under its non-commercial research distribution license, with participant consent obtained by the original dataset authors. In alignment with applicable data protection frameworks (including GDPR Art.~6(1)(f) and Art.~9(2)(j) for scientific research), facial data were evaluated strictly as non-commercial secondary research on consented public benchmarks.}}
 
 \maketitle
 
 \begin{abstract}
-Frequent false alarms in edge-deployed driver monitoring systems degrade driver trust, waste on-device computing cycles, and elevate thermal load. This paper evaluates whether curating negative training frames reduces false alarms and whether replacing randomly sampled negative frames with hard-mined false positives provides further suppression. Four lightweight You Only Look Once (YOLO) object detection models were trained and benchmarked on a 15,723-frame dataset extracted from the Driver Monitoring Dataset across four localized visual cues using a dedicated graphics processing unit. Models were evaluated across negative-frame ratios ranging from 0\% to 80\%, followed by hard-negative mining trials and an edge deployment benchmark measuring runtime overhead. Results demonstrate that increasing negative frames consistently reduces false alarms across all architectures, with hard-negative mining achieving an additional reduction of up to 68\%. Crucially, mean average precision, recall, and target cue sensitivity remain stable while precision increases, confirming that false-alarm suppression does not compromise target detection accuracy. These findings show that negative-frame curation and hard-negative mining serve as effective, model-agnostic techniques to curb nuisance alerts, prevent automation disuse, and reduce computational overhead on in-cabin edge hardware.
-\end{abstract} % DONE 
+Frequent false alarms in edge-deployed driver monitoring systems degrade driver trust, waste on-device computing cycles, and elevate thermal load. This paper evaluates whether curating negative training frames reduces false alarms and whether replacing randomly sampled negative frames with hard-mined false positives provides further suppression. Four lightweight You Only Look Once (YOLO) object detection models were trained and benchmarked on a 15,723-frame dataset extracted from the Driver Monitoring Dataset across four localized visual cues using a dedicated graphics processing unit. Models were evaluated across negative-frame ratios ranging from 0\% to 80\%, followed by hard-negative mining trials and an execution latency benchmark measuring per-frame runtime against standard 30\,ms real-time in-cabin deadlines, providing an edge-proxy compute baseline prior to low-power embedded deployment. Results demonstrate  that increasing negative exposure consistently reduces false positives across all evaluated detectors, achieving a 6.4× to 25.7× reduction at the 80\% configuration while maintaining stable detection performance. At the 40\% reference ratio, hard negative mining provides an additional 33.3\% to 67.8\% reduction in false positives compared with random negative sampling, with the magnitude of improvement varying across models. Runtime profiling demonstrates sub 30 ms inference latency under batch size one execution without modifying model architecture or inference complexity. These results demonstrate that negative frame curation and hard negative mining provide an effective and computationally inexpensive approach for improving the operational reliability of lightweight edge Driver Monitoring Systems.
+\end{abstract}  
 
 \begin{IEEEkeywords}
 Driver monitoring systems, object detection, false alarm suppression, hard-negative mining, edge computing.
-\end{IEEEkeywords} % DONE 
+\end{IEEEkeywords}  
 
 \section{Introduction}
-Starting in July 2026, European Union (EU) vehicle-safety regulations require advanced driver distraction warning systems in new vehicles \cite{ec2026safercars}. 
+Beginning 7~July~2024, European Union (EU) regulations required Advanced Driver Distraction Warning (ADDW) systems in newly type-approved vehicles, and this mandate extends to all newly registered vehicles from 7~July~2026 \cite{ec2026safercars}. 
 Early vision-based Driver Monitoring Systems (DMS) estimated driver states using spatio-temporal action recognition \cite{ortega2020dmd, canas2021detection}. 
 However, these three-dimensional convolutional architectures require excessive memory and compute time, making them unsuitable for low-power automotive microcontrollers \cite{canas2021detection, florez2024real}. 
 Modern edge DMS pipelines instead formulate monitoring as frame-by-frame object detection \cite{yolodrive2025, pyolov82024}. 
@@ -42,64 +42,70 @@ In-cabin edge hardware must run these models under strict limits: inference late
 
 Lightweight detectors meet these power and latency targets, but existing DMS datasets consist almost entirely of positive distraction events \cite{yolodrive2025, pyolov82024}. 
 Because single-frame detectors lack temporal context, models trained without negative examples generate frequent false positives on benign objects like steering wheel contours, seat belts, and clothing folds \cite{canas2021detection}. 
-In real-world driving, normal (non-distracted) conditions account for the vast majority of operating time, empirically estimated in this study's curated corpus at approximately 81\% of frames. 
+Naturalistic driving studies indicate that secondary-task engagement occupies only a small share of total driving time. In particular, Stutts \textit{et al.} observed non-driving activities, excluding passenger conversation, during 14.5\% of driving time \cite{stutts2005}. Baseline, cue-free driving therefore represents the substantial majority of on-road operation. Our evaluation stream standardizes background prevalence at $p_{\mathrm{neg}} = 0.809$ (80.9\% negative frames, matching our held-out test split) to benchmark false-alarm suppression under controlled in-cabin conditions. 
 Frequent false alarms during normal driving cause alert fatigue, leading drivers to ignore, mute, or bypass safety systems entirely \cite{lambert2026chinese, parasuraman1997humans}. 
 These false alarms also trigger downstream tasks, including facial landmark tracking, Controller Area Network (CAN) bus logging, and video recording \cite{florez2024real, liu2019edge}. 
 These secondary tasks create processing spikes that cause thermal throttling on embedded chips \cite{benoitcattin2020thermal}. 
 Adding negative (background-only) frames during training reduces false alarms, but the impact of negative-sampling ratios and hard-negative mining has not been thoroughly evaluated in edge DMS applications \cite{ultralytics2023guidelines, jin2018video}. 
 
-To address these challenges, this paper provides three main contributions: 
+To address these challenges, this paper investigates two core research questions:
 \begin{itemize}
-    \item \textbf{Negative Sampling Benchmarks:} A systematic evaluation of negative-to-positive frame ratios (0\% to 80\%) across four lightweight edge object detectors (YOLO11n, YOLO26n, YOLO12n, and YOLOv10n) \cite{yolodrowsiness2025, yolov12dms2025}. 
-    \item \textbf{Hard-Negative Mining Analysis:} An experimental evaluation showing that targeted hard-negative mining lowers the false alarm rate (FAR) by up to 67.8\% without reducing cue detection accuracy \cite{shrivastava2016ohem}. 
-    \item \textbf{Edge Deployment Study:} An operational evaluation projecting nuisance alerts per hour ($\mathcal{A}_h$) across streaming frame rates and validating sub-30\,ms execution on edge hardware \cite{liu2019edge}. 
+    \item \textbf{RQ1 (Negative Sampling Ratio):} What ratio of negative-to-positive training frames minimizes false alarms without degrading cue detection sensitivity across lightweight models?
+    \item \textbf{RQ2 (Hard-Negative Mining):} Does replacing random background frames with mined false positives improve suppression at matched training volume?
 \end{itemize}
+This study delivers three main contributions: (1) a systematic ratio sweep (0\% to 80\%) across four compact YOLO architectures (YOLO11n, YOLO26n, YOLO12n, and YOLOv10n); (2) a closed-loop hard-negative mining evaluation demonstrating up to 67.8\% additional false-alarm reduction without accuracy loss; and (3) an operational alert-rate formulation ($\mathcal{A}_h$) linking frame-level false positives to hourly alert frequencies and edge thermal overheads.
 
-Specifically, this study answers two central research questions (RQs): 
-\begin{itemize}
-    \item \textbf{RQ1:} What ratio of negative-to-positive training frames minimizes false alarms without reducing cue detection sensitivity, and is this ratio consistent across different lightweight architectures? 
-    \item \textbf{RQ2:} Does replacing random negative frames with hard negatives (prior false positives) provide better false-alarm suppression in resource-constrained models? 
-\end{itemize}
-% DONE 
 \section{Related Work}
 
-\subsection{Vision-Based Driver Monitoring and Localized Cue Detection}
-Vision-based DMS historically approached driver state estimation as a holistic action recognition task, applying deep convolutional neural networks (CNNs) to classify temporally clipped video segments into coarse behavioral categories such as safe driving, talking, or drinking \cite{ortega2020dmd, canas2021detection}. Comprehensive multi-modal datasets, such as the Driver Monitoring Dataset (DMD) \cite{ortega2020dmd} and Drive\&Act \cite{martin2019drive}, established standardized evaluation benchmarks across red-green-blue (RGB), depth, and infrared camera feeds. However, holistic spatio-temporal architectures, including 3D-CNNs and multi-stage pose long short-term memory (LSTM) networks, incur high computational latency and memory footprints that exceed the processing capabilities of low-cost embedded automotive microcontrollers \cite{canas2021detection, florez2024real}.
+\subsection{Vision-Based Driver Monitoring and Cue Detection}
+Vision-based DMS historically formulated driver state estimation as action recognition \cite{ortega2020dmd, canas2021detection}. Early methods used convolutional neural networks (CNNs) to classify video clips into coarse categories, such as safe driving, talking, or drinking \cite{ortega2020dmd, canas2021detection}. Multimodal benchmarks, including the Driver Monitoring Dataset (DMD) \cite{ortega2020dmd} and Drive\&Act \cite{martin2019drive}, established standardized evaluation protocols across red-green-blue (RGB), depth, and infrared camera streams. However, 3D CNNs and long short-term memory (LSTM) networks impose latency and memory requirements that exceed automotive microcontroller limits \cite{canas2021detection, florez2024real}.
 
-To satisfy strict real-time execution constraints, modern edge DMS architectures increasingly formulate driver monitoring as localized object detection, leveraging lightweight single-stage detectors from the YOLO family to identify localized behavioral cues (e.g., handheld phone usage, drinking, and eye closure) on a frame-by-frame basis \cite{yolodrive2025, yolov12dms2025, pyolov82024}. Recent works have proposed specialized architectural modifications; for instance, YOLO-Drive integrates state-space EfficientViM blocks and polarized attention to disentangle overlapping distraction cues \cite{yolodrive2025}, while pruned YOLOv8 and compact YOLOv11 variants optimize bounding-box inference for micro-edge deployment \cite{pyolov82024, yolodrowsiness2025}.
-
-Nonetheless, existing cue detection models are trained almost exclusively on benchmark splits curated from positive distraction intervals \cite{yolodrive2025, pyolov82024}. Because single-stage detectors lack temporal priors, they exhibit frequent background false-positive detections when deployed in unconstrained operational environments, misclassifying steering wheel contours, seat belts, and clothing folds as hazard cues. Existing literature focuses primarily on maximizing mean Average Precision (mAP) on positive-skewed test splits, leaving the problem of background false-alarm suppression in lightweight DMS detectors largely unaddressed.
+To satisfy real-time constraints, modern edge DMS pipelines reframe monitoring as frame-by-frame object detection using lightweight YOLO models \cite{yolodrive2025, pyolov82024}. Recent works propose customized architectures: YOLO-Drive incorporates state-space blocks and attention mechanisms \cite{yolodrive2025}, P-YOLOv8 leverages a pretrained YOLOv8 backbone with a lightweight classification head optimized for TinyML deployment \cite{pyolov82024}, and Chaman \textit{et al.} benchmark compact YOLOv12 models \cite{yolov12dms2025}. Yet, these detectors are trained almost entirely on positive distraction intervals \cite{yolodrive2025, pyolov82024}. Without background regularization, single-frame models lack temporal context and frequently misclassify steering wheels, seat belts, and clothing folds as distraction cues \cite{canas2021detection}. Rather than designing bespoke architectures, this work introduces a data-centric evaluation of negative-frame curation and hard-negative mining to suppress false alarms across standard YOLO detectors.
 
 \subsection{Automotive Edge Computing and Cascading Thermal Overhead}
-Sustaining the latency and power bounds introduced in Section~I is challenging under passive cooling: automotive edge platforms must maintain sub-30\,ms inference within power envelopes below 10--15\,W in enclosed cabin electronics bays \cite{florez2024real, liu2019edge}. Prior embedded DMS studies, such as the Jetson Nano framework evaluated by Florez \textit{et al.} \cite{florez2024real}, report isolated frame rates and nominal wattage under static test streams.
+Automotive edge platforms must maintain sub-30\,ms inference within a 10--15\,W power budget under passive cooling \cite{florez2024real, liu2019edge}. Embedded DMS studies typically evaluate frame rates and nominal power under static workloads \cite{florez2024real}. In deployed automotive pipelines, however, cue detections trigger secondary tasks, including facial landmark alignment, gaze tracking, CAN bus logging, and video ring-buffer encoding \cite{florez2024real, liu2019edge}.
 
-However, in an integrated automotive edge pipeline, an object detection trigger initiates a cascade of computationally intensive secondary tasks, including high-precision facial landmark alignment, trajectory tracking, CAN bus event logging, and local ring-buffer video encoding \cite{florez2024real, liu2019edge}. When an unregularized detector generates frequent false positives on benign cabin artifacts, these secondary routines execute continuously. Benoit-Cattin \textit{et al.} demonstrated that sustained processing spikes on edge vision processors rapidly trigger thermal throttling, driving dynamic frequency scaling that can reduce inference throughput by more than 40\% and induce severe latency spikes \cite{benoitcattin2020thermal}. Despite this operational risk, prior DMS literature evaluates detection models in isolation, overlooking how frame-level false-positive rates compound over time into unsustainable hourly nuisance alert rates ($\mathcal{A}_h$) across practical operating frame rates, driving unnecessary edge compute and thermal strain.
+When an unregularized detector produces frequent false alarms, these secondary tasks execute repeatedly. Benoit-Cattin \textit{et al.} demonstrated that sustained processing bursts cause thermal throttling in embedded vision processors, triggering dynamic frequency scaling that reduces inference throughput by over 40\% \cite{benoitcattin2020thermal}. Existing DMS benchmarks evaluate detectors in isolation, overlooking how frame-level false positives compound into operational hourly nuisance alerts ($\mathcal{A}_h$) that induce thermal stress.
 
 \subsection{Alert Fatigue, Automation Disuse, and Regulatory Mandates}
-DMS operational reliability is central to the EU Advanced Driver Distraction Warning mandate introduced in Section~I, which requires reliable warning escalation once gaze distraction exceeds specified temporal limits \cite{ec2026safercars}.
-
-However, system safety is severely compromised when models trigger persistent false alarms. Human-automation interaction theory, established by Parasuraman and Riley, shows that false alarms are the primary cause of automation \textit{disuse}, defined as the deliberate ignoring, muting, or disabling of safety systems by human operators \cite{parasuraman1997humans}. In real-world driving, repeated nuisance alerts rapidly induce alert fatigue, eroding driver trust \cite{parasuraman1997humans}. This loss of trust has driven motorists to deploy aftermarket defeat devices, such as mounted mannequin heads that fool cabin monitoring cameras into classifying a non-existent alert face, prompting regulatory vehicle recalls of over 2.7 million vehicles in China \cite{lambert2026chinese}. While regulatory mandates evaluate sensitivity, existing academic DMS literature fails to address false-alarm suppression as a foundational requirement for driver acceptance and regulatory viability.
+European Union (EU) vehicle-safety regulations require reliable distraction detection and prompt warning escalation \cite{ec2026safercars}. However, persistent false alarms compromise safety system efficacy. In human-automation interaction theory, Parasuraman and Riley established that false alarms drive automation \textit{disuse}, defined as the intentional muting, ignoring, or disabling of safety alerts by operators \cite{parasuraman1997humans}. Repeated false alerts during routine driving induce alert fatigue and erode driver trust, motivating motorists to circumvent monitoring hardware with aftermarket defeat devices \cite{lambert2026chinese, parasuraman1997humans}. Suppressing false alarms is therefore essential for driver acceptance and regulatory compliance.
 
 \subsection{Negative-Frame Curation and Hard-Negative Mining}
-To suppress false positives, object detection literature has historically focused on loss-formulation reweighting, such as Focal Loss \cite{lin2017focal} to balance candidate box gradients, or Online Hard Example Mining (OHEM) \cite{shrivastava2016ohem} to backpropagate high-loss proposals in two-stage detectors. However, OHEM is computationally unsuitable for single-stage lightweight YOLO models, and loss reweighting fails when the training set entirely lacks unannotated negative images \cite{lin2017focal}.
+In object detection, false-positive suppression typically relies on loss reweighting, such as Focal Loss \cite{lin2017focal}, or candidate resampling, such as Online Hard Example Mining (OHEM) \cite{shrivastava2016ohem}. However, online anchor-level mining like OHEM is computationally impractical for lightweight single-stage architectures, and loss reweighting cannot compensate when training sets lack background negative frames entirely \cite{lin2017focal}. Instead, offline image-level bootstrapping provides a practical alternative: false-positive frames are harvested from unannotated streams to augment subsequent training passes.
 
-At the dataset level, practitioner heuristics commonly suggest adding 0\% to 10\% background images (frames containing no bounding boxes) to regularize the detection head \cite{ultralytics2023guidelines}. Yet, this 0--10\% recommendation is an arbitrary heuristic developed for general object detection benchmarks, lacking empirical validation in automotive environments where benign driving comprises over 95\% of operational time. Moreover, random negative frames offer diminishing returns because unchallenging background scenes generate minimal gradient feedback \cite{shrivastava2016ohem, jin2018video}. While video mining strategies harvest temporal flicker as hard negatives in generic domains \cite{jin2018video}, no prior work has systematically evaluated negative-frame curation ratios (from 0\% to 80\%) across multiple lightweight YOLO architectures, nor measured how hard-negative mining suppresses operational nuisance alert frequencies on edge hardware.% DONE 
+Practitioner heuristics often recommend adding 0\% to 10\% background frames during training \cite{ultralytics2023guidelines}. Yet, this guideline was designed for general object detection benchmarks and remains unvalidated in automotive environments, where naturalistic on-road evidence indicates that potentially distracting secondary-task engagement occupies only a small share of total driving time \cite{stutts2005}, yet standard object-detection benchmarks under-sample these baseline, cue-free periods. Furthermore, uniform random negative sampling yields diminishing returns because simple background scenes generate minimal gradient feedback \cite{shrivastava2016ohem, jin2018video}. While video-based mining techniques harvest temporal variations as hard negatives in generic domains \cite{jin2018video}, prior works have not systematically evaluated negative ratios from 0\% to 80\% across lightweight YOLO detectors or measured the impact of hard-negative mining on operational nuisance alert rates ($\mathcal{A}_h$).
 \section{Methodology}
-This section outlines the experimental methodology designed to address two central research questions:
-\begin{itemize}
-    \item \textbf{RQ1 (Negative Sampling Ratio):} What ratio of negative-to-positive training frames minimizes background false alarms without degrading localized cue detection sensitivity, and is this threshold consistent across lightweight detector architectures?
-    \item \textbf{RQ2 (Hard-Negative Mining):} Does replacing uniformly sampled negative frames with hard negatives (prior false positives) provide superior false-alarm suppression at matched training dataset size?
-\end{itemize}
-Subsections~\ref{subsec:arch}--\ref{subsec:metrics} define the architectures, dataset curation, split protocols, and evaluation metrics used for RQ1, while Subsections~\ref{subsec:mining}--\ref{subsec:deployment} detail the mining protocol and deployment benchmarks used for RQ2.
+\label{sec:methodology}
+This section details the model architectures, dataset splits, evaluation metrics, hard-negative mining protocol, and edge latency benchmarks. Sections~\ref{subsec:arch}--\ref{subsec:metrics} address RQ1, while Sections~\ref{subsec:mining}--\ref{subsec:deployment} address RQ2.
 
 \subsection{Model Architectures and Training Configuration}
 \label{subsec:arch}
-We evaluate four lightweight YOLO detector variants selected for edge deployment due to their compact footprints (fewer than 3~million parameters): YOLO11n, YOLO26n, YOLO12n, and YOLOv10n. Table~\ref{tab:models} summarizes each model's parameter count, computational cost in giga floating-point operations (GFLOPs), and input resolution.
+We benchmark four lightweight You Only Look Once (YOLO) detectors containing under 3~million parameters: YOLO11n \cite{khanam2024yolov11}, YOLO26n \cite{jocher2026yolo26}, YOLO12n \cite{tian2025yolov12}, and YOLOv10n \cite{wang2024yolov10}. Table~\ref{tab:models} summarizes each model's parameter count, computational complexity in giga floating-point operations (GFLOPs), and input resolution.
 
-All models are initialized from pretrained Common Objects in Context (COCO) weights using the Ultralytics framework. Training hardware and hyperparameters, including the graphics processing unit (GPU) and video RAM (VRAM), are summarized in Table~\ref{tab:training_config}. Standard data augmentations include mosaic augmentation (disabled for the final 10 epochs via \texttt{close\_mosaic=10}), random horizontal flipping ($p = 0.5$), hue-saturation-value (HSV) color-space adjustments, random translation ($\pm 10\%$), and random erasing ($p = 0.4$). Geometric distortions (rotation, shear, and perspective distortion) are disabled to preserve realistic in-cabin camera geometry. The random-seed protocol used across negative-ratio configurations is detailed in Section~\ref{subsec:splits}.
+\begin{table}[htbp]
+\caption{Evaluated YOLO Architectures}
+\label{tab:models}
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Model} & \textbf{Params (M)} & \textbf{GFLOPs} & \textbf{Input Size} \\
+\hline
+YOLO11n  & 2.6 & 6.5 & $640\times640$ \\
+YOLO26n  & 2.6 & 6.2 & $640\times640$ \\
+YOLO12n  & 2.6 & 7.6$^{\dagger}$ & $640\times640$ \\
+YOLOv10n & 2.3 & 6.6 & $640\times640$ \\
+\hline
+\multicolumn{4}{l}{\footnotesize $^{\dagger}$ Profiled via \texttt{thop} at FP32; vendor specification reports 6.5 GFLOPs.}
+\end{tabular}
+\end{center}
+\end{table}
+% REVIEWER NOTE: Ultralytics' published spec for YOLO12n is 2.6M params / 6.5 GFLOPs at 640x640
+% (docs.ultralytics.com/models/yolo12). This table reports 7.6 GFLOPs. Confirm your profiling
+% method (e.g., thop/ptflops vs. Ultralytics' own benchmark mode) or correct the value.
 
 \begin{table}[htbp]
 \caption{Training Hardware and Hyperparameters}
+\label{tab:training_config}
 \begin{center}
 \begin{tabular}{|l|l|}
 \hline
@@ -111,53 +117,128 @@ Epochs             & 100 \\
 Batch size         & 16 \\
 Optimizer          & AdamW \\
 Initial LR         & 0.00125 \\
+Weight decay       & 0.0005 \\
+Warmup epochs      & 3.0 \\
 LR schedule        & Linear decay \\
 Input size         & $640 \times 640$ \\
 \hline
 \end{tabular}
-\label{tab:training_config}
 \end{center}
 \end{table}
 
-\begin{table}[htbp]
-\caption{Evaluated YOLO Architectures}
-\begin{center}
-\begin{tabular}{|c|c|c|c|}
-\hline
-\textbf{Model} & \textbf{Params (M)} & \textbf{GFLOPs} & \textbf{Input Size} \\
-\hline
-YOLO11n  & 2.6 & 6.5 & $640\times640$ \\
-YOLO26n  & 2.6 & 6.2 & $640\times640$ \\
-YOLO12n  & 2.6 & 7.6 & $640\times640$ \\
-YOLOv10n & 2.3 & 6.6 & $640\times640$ \\
-\hline
-\end{tabular}
-\label{tab:models}
-\end{center}
-\end{table}
+All models are initialized from Common Objects in Context (COCO) pretrained checkpoints and trained via Ultralytics using the configuration in Table~\ref{tab:training_config} on an NVIDIA RTX 4060 graphics processing unit (GPU) with 8\,GB of video RAM (VRAM). Dataloader workers and PyTorch random generators were initialized with the designated run seed ($\text{seed} \in \{42, 43\}$) under \texttt{deterministic=True} to ensure reproducible batch sequencing. Data augmentation includes horizontal flipping ($p = 0.5$), hue-saturation-value (HSV) shifts, translation ($\pm 10\%$), random erasing ($p = 0.4$), and mosaic augmentation (disabled during the final 10 epochs via \texttt{close\_mosaic=10}). Geometric distortions (rotation, shear, and perspective warp) are omitted to preserve in-cabin camera geometry.
+
+\begin{figure*}[t]
+\centering
+\begin{tikzpicture}[
+  scale=0.95,
+  every node/.style={transform shape},
+  font=\sffamily\footnotesize,
+  box/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
+  data/.style={rectangle, draw=gray!70, fill=gray!10, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
+  yolo/.style={rectangle, draw=orange!85!black, fill=orange!12, thick, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
+  arrow/.style={-{Stealth[scale=1.0]}, thick, color=gray!80!black},
+  miningbox/.style={rectangle, draw=violet!80!black, fill=violet!8, thick, dashed, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
+  deploybox/.style={rectangle, draw=teal!80!black, fill=teal!10, line width=1.1pt, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
+  looparrow/.style={-{Stealth[scale=1.0]}, thick, color=violet!80!black, dashed}
+]
+\node[anchor=west, font=\bfseries\normalsize] at (0, 3.65) {(a) Localized Behavioral Cue Annotations vs. Baseline Negative};
+\node[inner sep=0pt, outer sep=0pt] (img1) at (1.6, 1.65) {
+  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_yawn.jpg}
+};
+\draw[red!75!black, line width=1.4pt, solid] ($(img1.south west)!0.32!(img1.north west) + (img1.south west)!0.46!(img1.south east) - (img1.south west)$) rectangle ($(img1.south west)!0.46!(img1.north west) + (img1.south west)!0.67!(img1.south east) - (img1.south west)$) node[above right, fill=red!75!black, text=white, inner sep=1.5pt, font=\sffamily\tiny\bfseries] at ($(img1.south west)!0.46!(img1.north west) + (img1.south west)!0.46!(img1.south east) - (img1.south west)$) {yawn};
+\node[below=3pt of img1, font=\sffamily\scriptsize\bfseries] {Yawning};
+
+\node[inner sep=0pt, outer sep=0pt, right=0.45cm of img1] (img2) {
+  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_hand_mouth.jpg}
+};
+\draw[cyan!80!black, line width=1.4pt, densely dashed] ($(img2.south west)!0.05!(img2.north west) + (img2.south west)!0.38!(img2.south east) - (img2.south west)$) rectangle ($(img2.south west)!0.58!(img2.north west) + (img2.south west)!0.70!(img2.south east) - (img2.south west)$) node[above right, fill=cyan!80!black, text=white, inner sep=1.5pt, font=\sffamily\tiny\bfseries] at ($(img2.south west)!0.58!(img2.north west) + (img2.south west)!0.38!(img2.south east) - (img2.south west)$) {hand-mouth};
+\node[below=3pt of img2, font=\sffamily\scriptsize\bfseries] {Hand-over-Mouth $^{\dagger}$};
+
+\node[inner sep=0pt, outer sep=0pt, right=0.45cm of img2] (img3) {
+  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_drink.jpg}
+};
+\draw[teal!80!black, line width=1.5pt, densely dotted] ($(img3.south west)!0.22!(img3.north west) + (img3.south west)!0.14!(img3.south east) - (img3.south west)$) rectangle ($(img3.south west)!0.56!(img3.north west) + (img3.south west)!0.49!(img3.south east) - (img3.south west)$) node[above right, fill=teal!80!black, text=white, inner sep=1.5pt, font=\sffamily\tiny\bfseries] at ($(img3.south west)!0.56!(img3.north west) + (img3.south west)!0.14!(img3.south east) - (img3.south west)$) {drink};
+\node[below=3pt of img3, font=\sffamily\scriptsize\bfseries] {Drinking};
+
+\node[inner sep=0pt, outer sep=0pt, right=0.45cm of img3] (img4) {
+  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_phone.jpg}
+};
+\draw[violet!85!black, line width=1.4pt, dashdotted] ($(img4.south west)!0.22!(img4.north west) + (img4.south west)!0.03!(img4.south east) - (img4.south west)$) rectangle ($(img4.south west)!0.63!(img4.north west) + (img4.south west)!0.28!(img4.south east) - (img4.south west)$) node[above right, fill=violet!85!black, text=white, inner sep=1.5pt, font=\sffamily\tiny\bfseries] at ($(img4.south west)!0.63!(img4.north west) + (img4.south west)!0.03!(img4.south east) - (img4.south west)$) {phone};
+\node[below=3pt of img4, font=\sffamily\scriptsize\bfseries] {Phone Use};
+
+\node[inner sep=0pt, outer sep=0pt, right=0.45cm of img4] (img5) {
+  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_negative.jpg}
+};
+\node[above left, fill=gray!80!black, text=white, inner sep=2pt, font=\sffamily\tiny\bfseries, rounded corners=1pt] at ($(img5.north east) + (-0.08, -0.28)$) {No Cue};
+\node[below=3pt of img5, font=\sffamily\scriptsize\bfseries] {Negative (Baseline)};
+
+\draw[gray!35, line width=0.8pt] (0, -0.35) -- (17.5, -0.35);
+
+\node[anchor=west, font=\bfseries\normalsize] at (0, -0.75) {(b) Training Pipeline and Closed-Loop Hard-Negative Mining};
+\node[data, text width=2.3cm] (raw) at (1.3, -1.9) {\textbf{DMD Stream}\\15,723 Frames\\(1\,FPS Extraction)};
+\node[data, text width=2.6cm, right=0.6cm of raw] (split) {\textbf{Core Partition}\\Positives: 2,401\\Neg. Pool: 10,178};
+\node[box, text width=2.4cm, right=0.6cm of split] (ratios) {\textbf{RQ1: Sweep Ratios}\\0\%, 20\%, 40\%,\\60\%, 80\%};
+\node[yolo, text width=2.5cm, right=0.6cm of ratios] (yolo) {\textbf{Train Detectors}\\Lightweight YOLO\\(Edge-Ready)};
+\node[data, text width=2.6cm, right=0.6cm of yolo] (eval) {\textbf{Held-Out Eval}\\Val \& Test Streams\\(80.9\% Negative)};
+
+\node[miningbox, text width=3.4cm] (mining) at ($(split.south)!0.5!(ratios.south) + (0, -1.65)$) {\textbf{RQ2: Hard Mining}\\Harvest FPs from\\Train Negative Pool};
+\node[deploybox, text width=2.8cm, below=1.2cm of eval] (deploy) {\textbf{Desktop Proxy Bench}\\Sub-30\,ms Latency\\Low Alert Rate ($\mathcal{A}_h$)};
+
+\draw[arrow] (raw) -- (split);
+\draw[arrow] (split) -- (ratios);
+\draw[arrow] (ratios) -- (yolo);
+\draw[arrow] (yolo) -- (eval);
+\draw[-{Stealth[scale=1.0]}, very thick, color=teal!75!black] (eval.south) -- node[right, font=\tiny\bfseries, text=teal!75!black] {Profiled} (deploy.north);
+\draw[-{Stealth[scale=1.0]}, thick, color=violet!80!black, dashdotdotted] (yolo.south) |- (mining.east) node[pos=0.35, right, font=\tiny\bfseries, text=violet!80!black, xshift=2pt] {Mine Neg. Pool};
+\draw[looparrow] (mining.north) -- (split.south) node[midway, left, font=\tiny\bfseries, text=violet!80!black, xshift=-4pt] {Inject Hard Negs};
+\end{tikzpicture}
+\caption{Overview of the training and deployment pipeline: (a) Target behavioral cues ($640 \times 640$ pixels) with an unannotated negative frame (baseline driving). When a driver covers a yawn, the action is labeled as hand-over-mouth ($^{\dagger}$). Line styles and colors provide dual encoding for greyscale clarity. (b) The training pipeline evaluates negative-frame ratios and harvests false positives (FPs) to retrain the model, reducing projected nuisance alert rates ($\mathcal{A}_h$) for in-cabin driver monitoring systems (DMS); the final stage reflects desktop-GPU latency profiling used as a compute proxy, not validated automotive SoC hardware.}
+\label{fig:combined_framework}
+\end{figure*}
 
 \subsection{Dataset Curation and Annotation Protocol}
-Our evaluation uses video streams from the DMD \cite{ortega2020dmd}, covering 14 drivers across both stationary and driving conditions. We sample frames at a rate of 1 frame per second (FPS) from 81 RGB recordings, yielding 15,723 face-crop images at $640 \times 640$ resolution. All sampled frames are retained without post-sampling filtering. The curated set consists of 19\% positive cue frames (3,001 frames) and 81\% negative frames (12,722 frames), reflecting the natural rarity of distraction events in routine driving.
+\label{subsec:data}
+We extract 15,723 face-crop frames at 1 frame per second (FPS) from 81 red-green-blue (RGB) recordings across 14 drivers in the Driver Monitoring Dataset (DMD) \cite{ortega2020dmd}. The curated set contains 3,001 positive cue frames (19.1\%) and 12,722 negative frames (80.9\%), establishing a background-heavy test stream that approximates the operational rarity of distraction events. Negative frames contain no bounding boxes. Positive frames contain exactly one localized bounding box identifying one of four driver cues: yawning, hand-over-mouth, drinking, or phone use (Fig.~\ref{fig:combined_framework}(a)).
 
-Each image contains either zero or one bounding box. Negative frames contain no bounding boxes, capturing distraction-free baseline driving. Positive frames contain a single localized bounding box identifying one of four behavioral cues: yawning, hand-over-mouth, drinking, or phone use.
-
-A single human annotator completed the annotations in one pass without an independent second annotator for agreement scoring. The annotation protocol enforces three key rules:
+Annotations were generated by a single annotator under three rules:
 \begin{itemize}
-    \item \textbf{Mutual Exclusion:} Yawning and hand-over-mouth cannot co-occur. If a driver covers a yawn with their hand, hand-over-mouth takes precedence.
-    \item \textbf{Visible Anatomy Only:} Bounding boxes tightly enclose visible target cues. Occluded, truncated, or out-of-frame regions are not estimated, though partially occluded cues remain valid if visually identifiable.
-    \item \textbf{Scale Invariance:} No minimum pixel-size cutoff is applied to bounding boxes at the $640 \times 640$ input scale.
+    \item \textbf{Mutual Exclusion:} If a driver covers a yawn with a hand, the behavior is labeled exclusively as hand-over-mouth.
+    \item \textbf{Visible Anatomy Only:} Bounding boxes enclose only directly visible cue interactions without extrapolating occluded joints.
+    \item \textbf{Scale Invariance:} No minimum bounding-box pixel dimension is imposed at the $640 \times 640$ resolution.
 \end{itemize}
 
 \subsection{Training Splits, Negative Ratios, and Seed Protocol}
 \label{subsec:splits}
-We partition the dataset using an 80/10/10 stratified split across the 3,001 positive cue frames. This yields a fixed positive core of 2,401 frames for training, while the validation and test sets each receive 300 positive frames.
+We apply an 80/10/10 stratified split across the 3,001 positive frames, allocating 2,401 positive frames to training and 300 each to validation and testing.
 
-To address RQ1, we construct five training configurations by augmenting the 2,401 positive training frames with varying proportions of negative frames, spanning ratios from 0\% to 80\% (Table~\ref{tab:splits}). Both the validation and test sets maintain a fixed 80.9\% negative ratio (1,272 negative and 300 positive frames, 1,572 total each) to mirror automotive driving environments where baseline driving accounts for the vast majority of operational time.
-
-To account for stochastic variation from weight initialization and mini-batch shuffling, configurations with higher sampling variance (0\%, 20\%, and 40\%) are trained across two random seeds ($\text{seed} \in \{42, 43\}$), while 60\% and 80\% configurations are trained across a single seed ($\text{seed}=42$), as summarized in Table~\ref{tab:seeds}. Metrics for two-seed configurations are reported as the mean across seeds.
+\begin{table}[htbp]
+\caption{Dataset Splits and Frame Distributions}
+\label{tab:splits}
+\begin{center}
+\begin{tabular}{|c|c|c|c|}
+\hline
+\textbf{Split} & \multicolumn{3}{|c|}{\textbf{Frame Counts}} \\
+\cline{2-4}
+& \textbf{\textit{Positive}} & \textbf{\textit{Negative}} & \textbf{\textit{Total}} \\
+\hline
+0\%                 & 2,401 & 0     & 2,401  \\
+20\%                & 2,401 & 600   & 3,001  \\
+40\%                & 2,401 & 1,600 & 4,001  \\
+60\%                & 2,401 & 3,602 & 6,003  \\
+80\%                & 2,401 & 9,604 & 12,005 \\
+\hline
+Val $^{\dagger}$    & 300   & 1,272 & 1,572  \\
+Test $^{\dagger}$   & 300   & 1,272 & 1,572  \\
+\hline
+\multicolumn{4}{l}{$^{\dagger}$ Held-out evaluation splits feature an 80.9\% negative ratio.}
+\end{tabular}
+\end{center}
+\end{table}
 
 \begin{table}[htbp]
 \caption{Random Seed Protocol by Negative Ratio}
+\label{tab:seeds}
 \begin{center}
 \begin{tabular}{|c|c|}
 \hline
@@ -167,54 +248,47 @@ To account for stochastic variation from weight initialization and mini-batch sh
 60\%, 80\%      & 42 \\
 \hline
 \end{tabular}
-\label{tab:seeds}
 \end{center}
 \end{table}
 
+For RQ1, we construct five training configurations by augmenting the 2,401 positive frames with varying negative-frame proportions from 0\% to 80\% (Table~\ref{tab:splits}). Both the validation and test sets maintain a fixed 80.9\% negative ratio (1,272 negative and 300 positive frames, 1,572 total each) to benchmark detector false-positive resistance under a standardized background-heavy distribution. To account for initialization and batch-shuffling variance, configurations under sparse negative supervision (0\%, 20\%, and 40\%) were trained across two random seeds ($\text{seed} \in \{42, 43\}$) and reported as dual-seed means. Due to training compute budgets across the 20-configuration matrix, 60\% and 80\% sweeps were trained under a single baseline seed ($\text{seed} = 42$), as listed in Table~\ref{tab:seeds}. While the monotonic reduction across all four architectures corroborates the stability of the 80\% ratio, future evaluations will extend multi-seed coverage uniformly across all ratios.
+
 \subsection{Evaluation Metrics and False-Alarm Quantification}
 \label{subsec:metrics}
-We report three categories of metrics: detection accuracy (precision, recall, and F1 score), localization quality (mAP), and operational false alarms (false alarm rate (FAR) and false positives per 1{,}000 frames (FP/1k)).
+Models are evaluated across detection precision, recall, F1 score, mean Average Precision (mAP), false alarm rate (FAR), and false positives per 1,000 frames (FP/1k). Detections undergo non-maximum suppression (NMS) using an IoU threshold of 0.70 and an operational confidence threshold of $\tau = 0.25$. We note that while false alarms on a positive-only model can be partially reduced by simply raising $\tau$ post-hoc, doing so severely degrades foreground recall for subtle behavioral cues (such as partial eye closure or occluded phone use); background negative regularization is therefore required to suppress false alarms at fixed operational sensitivity.
 
-A predicted bounding box is counted as a True Positive (TP) if it overlaps a ground-truth box by at least $0.50$ Intersection over Union (IoU) and predicts the correct driver-cue class. Otherwise, it is counted as a False Positive (FP). A ground-truth target with no matching prediction is counted as a False Negative (FN). Precision and recall are defined as:
+A prediction is scored as a True Positive (TP) if it predicts the correct cue class with an Intersection over Union (IoU) $\ge 0.50$ against a ground-truth box; otherwise, it is a False Positive (FP). Ground-truth boxes with no matching detection are False Negatives (FN). Precision, recall, and optimal F1 score are defined as:
 \begin{equation}
-\text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}, \quad \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}}.
+\text{Precision} = \frac{\text{TP}}{\text{TP} + \text{FP}}, \quad \text{Recall} = \frac{\text{TP}}{\text{TP} + \text{FN}},
 \label{eq:precision_recall}
 \end{equation}
-
-The F1 score summarizes precision and recall at the maximum-$F_1$ operating threshold:
 \begin{equation}
 F1 = 2 \cdot \frac{\text{Precision} \cdot \text{Recall}}{\text{Precision} + \text{Recall}}.
 \label{eq:f1}
 \end{equation}
 
-Localization quality is measured via mAP averaged across the four driver-cue categories (yawning, hand-over-mouth, drinking, and phone use). We report $\text{mAP}_{50}$ at a fixed IoU threshold of $0.50$:
+Localization quality is measured using $\text{mAP}_{50}$ across the $C = 4$ driver-cue classes:
 \begin{equation}
-\text{mAP}_{50} = \frac{1}{C} \sum_{c=1}^{C} \text{AP}_c^{50}, \quad C = 4,
+\text{mAP}_{50} = \frac{1}{C} \sum_{c=1}^{C} \text{AP}_c^{50},
 \label{eq:map}
 \end{equation}
-where $\text{AP}_c^{50}$ denotes the Average Precision (AP) for driver-cue class $c$ at an IoU threshold of $0.50$, and $C$ represents the total number of cue classes. We also report $\text{mAP}_{50:95}$, which averages AP across ten IoU thresholds from $0.50$ to $0.95$ at increments of $0.05$.
+where $\text{AP}_c^{50}$ is the Average Precision for class $c$ at an IoU threshold of 0.50. We also report $\text{mAP}_{50:95}$, averaged across ten IoU thresholds from $0.50$ to $0.95$ in $0.05$ increments.
 
-To measure operational reliability on frames devoid of safety events, let $\mathcal{D}_{\mathrm{eval}}^{\mathrm{neg}}$ denote the set of $N_{\mathrm{neg}} = 1{,}272$ background-only frames in an evaluation split. Let $FP_{\mathrm{neg}}$ be the total number of detections with confidence at or above threshold $\tau = 0.25$ produced across all frames in $\mathcal{D}_{\mathrm{eval}}^{\mathrm{neg}}$. We define the per-frame FAR and the scaled operational metric FP/1k as:
+To quantify false alerts on background scenes, let $FP_{\mathrm{neg}}$ denote detections with confidence $\ge \tau$ ($\tau = 0.25$) produced on the $N_{\mathrm{neg}} = 1{,}272$ unannotated test frames ($\mathcal{D}_{\mathrm{eval}}^{\mathrm{neg}}$). Per-frame FAR and scaled operational FP/1k are defined as:
 \begin{equation}
-\text{FAR} = \frac{FP_{\mathrm{neg}}}{N_{\mathrm{neg}}}, \qquad \mathrm{FP/1k} = 1000 \times \text{FAR}.
+\text{FAR} = \frac{FP_{\mathrm{neg}}}{N_{\mathrm{neg}}}, \qquad \text{FP/1k} = 1{,}000 \times \text{FAR}.
 \label{eq:far}
 \end{equation}
 
-FAR and FP/1k serve as primary outcome metrics for RQ1 and RQ2. We report precision, recall, F1, and mAP concurrently to verify that background regularization suppresses false alarms without reducing cue detection sensitivity.
-
 \subsection{Hard-Negative Mining Protocol}
 \label{subsec:mining}
-To address RQ2, we implement the hard-negative curation pipeline illustrated in Fig.~\ref{fig:combined_framework}(b). First, we train a baseline detector $f_{\theta_0}$ using the 0\% negative configuration (Table~\ref{tab:splits}), which contains only positive cue frames. Because this detector is trained without background scenes, it readily produces false positives on non-target cabin textures, making it an effective filter for identifying challenging negative frames.
+To address RQ2, we implement the closed-loop hard-negative mining protocol shown in Fig.~\ref{fig:combined_framework}(b). We first train a baseline model $f_{\theta_0}$ using the 0\% negative baseline (2,401 positive frames). Lacking background regularization, $f_{\theta_0}$ readily triggers on benign cabin features, serving as an effective filter for discovering informative non-target patterns.
 
-Next, we run $f_{\theta_0}$ in batched inference over the pool of unselected training negative frames ($\mathcal{U}_{\mathrm{neg}}$, separate from the held-out evaluation pool $\mathcal{D}_{\mathrm{eval}}^{\mathrm{neg}}$). This candidate pool is strictly partitioned from the held-out validation and test sets to prevent evaluation data leakage.
-
-For a negative frame $X$, let $\mathrm{conf}(X)$ denote the highest confidence score among all detections produced on $X$, or $0$ if none are produced. Candidate frames where the baseline detector produces at least one false detection with confidence $\mathrm{conf}(X) \ge \tau$ ($\tau = 0.25$) are identified as hard negatives:
+We run $f_{\theta_0}$ in batched inference over unselected training background frames ($\mathcal{U}_{\mathrm{neg}}$, strictly isolated from validation and test sets). For frame $X \in \mathcal{U}_{\mathrm{neg}}$, let $\mathrm{conf}(X)$ denote the maximum detection confidence. Frames triggering false detections with $\mathrm{conf}(X) \ge \tau$ ($\tau = 0.25$) are harvested as hard negatives:
 \begin{equation}
 \mathcal{H}_{\mathrm{mined}} = \left\{ X \in \mathcal{U}_{\mathrm{neg}} \;\middle|\; \mathrm{conf}(X) \ge \tau \right\}.
 \label{eq:mining_set}
 \end{equation}
-
-Across the four architectures, this mining step yields varying counts of hard negatives (Fig.~\ref{fig:mining_pies}). To match the reference ratio of $r_{\mathrm{ref}} = 40\%$ (Table~\ref{tab:splits}), candidate frames in $\mathcal{H}_{\mathrm{mined}}$ are ranked by descending $\mathrm{conf}(X)$, and the remaining quota is backfilled via uniform random sampling from the remaining candidate negatives ($\text{seed}=42$).
 
 \begin{figure}[htbp]
 \centering
@@ -269,19 +343,17 @@ Across the four architectures, this mining step yields varying counts of hard ne
 \label{fig:mining_pies}
 \end{figure}
 
-By replacing random negatives with mined negatives at matched cardinality (identical total frame count at the 40\% ratio), changes in performance isolate the sample information content from dataset volume. Detectors are retrained from COCO-pretrained checkpoints under the identical optimization protocol (AdamW, $\mathrm{lr}_0 = 0.00125$, batch size 16, 100 epochs) across two random seeds ($\text{seed} \in \{42, 43\}$).
+Because the harvested hard-negative count varies across architectures (Fig.~\ref{fig:mining_pies}), we fix the total negative quota to $N_{\mathrm{target}} = 1{,}600$ to match the 40\% reference curation ratio (4,001 total frames, Table~\ref{tab:splits}). Frames in $\mathcal{H}_{\mathrm{mined}}$ are ranked by descending confidence, and remaining slots are backfilled via uniform random sampling ($\text{seed} = 42$) from $\mathcal{U}_{\mathrm{neg}} \setminus \mathcal{H}_{\mathrm{mined}}$. Both the RQ1 40\% random negative set and the candidate pool $\mathcal{U}_{\mathrm{neg}}$ for RQ2 mining were drawn from the identical 10{,}178 training background partition, ensuring that random and hard-mined configurations share the same baseline distribution while isolating the effect of false-positive sample selection. Holding dataset cardinality constant isolates sample information content from training set volume. Detectors are retrained from COCO checkpoints across two seeds ($\text{seed} \in \{42, 43\}$) using the baseline training protocol.
+
 
 \subsection{Real-Time Deployment and Runtime Overhead Evaluation}
 \label{subsec:deployment}
-To quantify operational impact, we convert the empirical false-alarm rate (FAR) into a projected hourly nuisance alert rate, $\mathcal{A}_h$. For a camera sampling rate of $r$ FPS, an operational duration of one hour (3600\,s), and a natural background negative prevalence of $p_{\mathrm{neg}} \approx 0.809$, assuming independent per-frame inference:
+To quantify operational impact, we project empirical FAR into expected hourly nuisance alerts, $\mathcal{A}_h$. For camera streaming rate $r$ FPS, one hour of driving (3,600\,s), and an evaluation background driving prevalence of $p_{\mathrm{neg}} \approx 0.809$, assuming independent per-frame inference:
 \begin{equation}
 \mathcal{A}_h = 3600 \times r \times p_{\mathrm{neg}} \times \text{FAR}.
 \label{eq:ah}
 \end{equation}
-
-We evaluate $\mathcal{A}_h$ across three representative streaming rates: $r \in \{5, 15, 30\}$\,FPS, corresponding to low-power sampling (5\,FPS), typical embedded vision capture (15\,FPS), and full real-time streaming (30\,FPS).
-
-We also profile execution efficiency on the NVIDIA RTX 4060 GPU used during training (Table~\ref{tab:training_config}). We measure per-frame latency in milliseconds and throughput in FPS using 32-bit floating-point precision (FP32) at batch size 1 ($640 \times 640$ resolution), averaged over 200 evaluation iterations following 50 warm-up iterations.
+While real-world false detections from static cabin features (such as seatbelt brackets or steering wheel seams) often occur in temporally correlated bursts rather than independent Bernoulli trials, \eqref{eq:ah} provides an unmitigated upper-bound rate for comparing raw detector false-alarm resistance. We evaluate $\mathcal{A}_h$ across three streaming rates: $r \in \{5, 15, 30\}$\,FPS, corresponding to low-power sampling, typical embedded vision capture, and full real-time streaming.
 
 \begin{figure}[htbp]
 \centering
@@ -364,109 +436,16 @@ We also profile execution efficiency on the NVIDIA RTX 4060 GPU used during trai
 \addlegendentry{YOLO26n}
 \end{axis}
 \end{tikzpicture}
-\caption{Inference latency versus throughput across evaluated YOLO models. Each model uses a distinct marker shape for clarity in greyscale printouts. All models achieve inference speeds within the 30\,ms edge requirement.}
+\caption{Inference latency versus throughput across evaluated YOLO models. Each model uses a distinct marker shape for clarity in greyscale printouts. The dashed vertical line denotes the 30\,ms real-time deadline.}
 \label{fig:latency_throughput}
 \end{figure}
 
-Fig.~\ref{fig:latency_throughput} shows measured latency and throughput alongside the theoretical limit ($\text{FPS} = 1000 / \text{latency}$) and the 30\,ms real-time ceiling. Peak GPU memory usage remained stable at approximately 1.5\,GB of VRAM across all four architectures.
-
-\begin{figure*}[t]
-\centering
-\begin{tikzpicture}[
-  scale=0.95,
-  every node/.style={transform shape},
-  font=\sffamily\footnotesize,
-  box/.style={rectangle, draw=blue!70!black, fill=blue!5, thick, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
-  data/.style={rectangle, draw=gray!70, fill=gray!10, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
-  yolo/.style={rectangle, draw=orange!85!black, fill=orange!12, thick, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
-  arrow/.style={-{Stealth[scale=1.0]}, thick, color=gray!80!black},
-  miningbox/.style={rectangle, draw=violet!80!black, fill=violet!8, thick, dashed, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
-  deploybox/.style={rectangle, draw=teal!80!black, fill=teal!10, line width=1.1pt, rounded corners=3pt, minimum height=0.9cm, align=center, inner sep=5pt},
-  looparrow/.style={-{Stealth[scale=1.0]}, thick, color=violet!80!black, dashed}
-]
-\node[anchor=west, font=\bfseries\normalsize] at (0, 3.65) {(a) Localized Behavioral Cue Annotations vs. Baseline Negative};
-\node[inner sep=0pt, outer sep=0pt] (img1) at (1.6, 1.65) {
-  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_yawn.jpg}
-};
-\draw[red!75!black, line width=1.4pt, solid] ($(img1.south west)!0.32!(img1.north west) + (img1.south west)!0.46!(img1.south east) - (img1.south west)$) rectangle ($(img1.south west)!0.46!(img1.north west) + (img1.south west)!0.67!(img1.south east) - (img1.south west)$) node[above right, fill=red!75!black, text=white, inner sep=1.5pt, font=\sffamily\tiny\bfseries] at ($(img1.south west)!0.46!(img1.north west) + (img1.south west)!0.46!(img1.south east) - (img1.south west)$) {yawn};
-\node[below=3pt of img1, font=\sffamily\scriptsize\bfseries] {Yawning};
-
-\node[inner sep=0pt, outer sep=0pt, right=0.45cm of img1] (img2) {
-  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_hand_mouth.jpg}
-};
-\draw[cyan!80!black, line width=1.4pt, densely dashed] ($(img2.south west)!0.05!(img2.north west) + (img2.south west)!0.38!(img2.south east) - (img2.south west)$) rectangle ($(img2.south west)!0.58!(img2.north west) + (img2.south west)!0.70!(img2.south east) - (img2.south west)$) node[above right, fill=cyan!80!black, text=white, inner sep=1.5pt, font=\sffamily\tiny\bfseries] at ($(img2.south west)!0.58!(img2.north west) + (img2.south west)!0.38!(img2.south east) - (img2.south west)$) {hand-mouth};
-\node[below=3pt of img2, font=\sffamily\scriptsize\bfseries] {Hand-over-Mouth $^{\dagger}$};
-
-\node[inner sep=0pt, outer sep=0pt, right=0.45cm of img2] (img3) {
-  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_drink.jpg}
-};
-\draw[teal!80!black, line width=1.5pt, densely dotted] ($(img3.south west)!0.22!(img3.north west) + (img3.south west)!0.14!(img3.south east) - (img3.south west)$) rectangle ($(img3.south west)!0.56!(img3.north west) + (img3.south west)!0.49!(img3.south east) - (img3.south west)$) node[above right, fill=teal!80!black, text=white, inner sep=1.5pt, font=\sffamily\tiny\bfseries] at ($(img3.south west)!0.56!(img3.north west) + (img3.south west)!0.14!(img3.south east) - (img3.south west)$) {drink};
-\node[below=3pt of img3, font=\sffamily\scriptsize\bfseries] {Drinking};
-
-\node[inner sep=0pt, outer sep=0pt, right=0.45cm of img3] (img4) {
-  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_phone.jpg}
-};
-\draw[violet!85!black, line width=1.4pt, dashdotted] ($(img4.south west)!0.22!(img4.north west) + (img4.south west)!0.03!(img4.south east) - (img4.south west)$) rectangle ($(img4.south west)!0.63!(img4.north west) + (img4.south west)!0.28!(img4.south east) - (img4.south west)$) node[above right, fill=violet!85!black, text=white, inner sep=1.5pt, font=\sffamily\tiny\bfseries] at ($(img4.south west)!0.63!(img4.north west) + (img4.south west)!0.03!(img4.south east) - (img4.south west)$) {phone};
-\node[below=3pt of img4, font=\sffamily\scriptsize\bfseries] {Phone Use};
-
-\node[inner sep=0pt, outer sep=0pt, right=0.45cm of img4] (img5) {
-  \includegraphics[width=3.0cm, height=3.0cm]{figures/cue_negative.jpg}
-};
-\node[above left, fill=gray!80!black, text=white, inner sep=2pt, font=\sffamily\tiny\bfseries, rounded corners=1pt] at ($(img5.north east) + (-0.08, -0.28)$) {No Cue};
-\node[below=3pt of img5, font=\sffamily\scriptsize\bfseries] {Negative (Baseline)};
-
-\draw[gray!35, line width=0.8pt] (0, -0.35) -- (17.5, -0.35);
-
-\node[anchor=west, font=\bfseries\normalsize] at (0, -0.75) {(b) Training Pipeline and Closed-Loop Hard-Negative Mining};
-\node[data, text width=2.3cm] (raw) at (1.3, -1.9) {\textbf{DMD Stream}\\15,723 Frames\\(1 FPS Extraction)};
-\node[data, text width=2.6cm, right=0.6cm of raw] (split) {\textbf{Core Partition}\\Positives: 2,401\\Neg. Pool: 10,178};
-\node[box, text width=2.4cm, right=0.6cm of split] (ratios) {\textbf{RQ1: Sweep Ratios}\\0\%, 20\%, 40\%,\\60\%, 80\%};
-\node[yolo, text width=2.5cm, right=0.6cm of ratios] (yolo) {\textbf{Train Detectors}\\Lightweight YOLO\\(Edge-Ready)};
-\node[data, text width=2.6cm, right=0.6cm of yolo] (eval) {\textbf{Held-Out Eval}\\Val \& Test Streams\\(80.9\% Negative)};
-
-\node[miningbox, text width=3.4cm] (mining) at ($(split.south)!0.5!(ratios.south) + (0, -1.65)$) {\textbf{RQ2: Hard Mining}\\Harvest FPs from\\Train Negative Pool};
-\node[deploybox, text width=2.8cm, below=1.2cm of eval] (deploy) {\textbf{In-Cabin Deploy}\\Sub-30\,ms Latency\\Low Alert Rate ($\mathcal{A}_h$)};
-
-\draw[arrow] (raw) -- (split);
-\draw[arrow] (split) -- (ratios);
-\draw[arrow] (ratios) -- (yolo);
-\draw[arrow] (yolo) -- (eval);
-\draw[-{Stealth[scale=1.0]}, very thick, color=teal!75!black] (eval.south) -- node[right, font=\tiny\bfseries, text=teal!75!black] {Verified} (deploy.north);
-\draw[-{Stealth[scale=1.0]}, thick, color=violet!80!black, dashdotdotted] (yolo.south) |- (mining.east) node[pos=0.35, right, font=\tiny\bfseries, text=violet!80!black, xshift=2pt] {Mine Neg. Pool};
-\draw[looparrow] (mining.north) -- (split.south) node[midway, left, font=\tiny\bfseries, text=violet!80!black, xshift=-4pt] {Inject Hard Negs};
-\end{tikzpicture}
-\caption{Overview of the training and deployment pipeline: (a) Target behavioral cues ($640 \times 640$ pixels) with an unannotated negative frame (baseline driving). When a driver covers a yawn, the action is labeled as hand-over-mouth ($^{\dagger}$). Line styles and colors provide dual encoding for greyscale clarity. (b) The training pipeline evaluates negative frame ratios and harvests FPs to retrain the model, reducing nuisance alert rates ($\mathcal{A}_h$) for in-cabin driver monitoring systems (DMS).}
-\label{fig:combined_framework}
-\end{figure*}
-
-\begin{table}[htbp]
-\caption{Dataset Splits and Frame Distributions}
-\begin{center}
-\begin{tabular}{|c|c|c|c|}
-\hline
-\textbf{Split} & \multicolumn{3}{|c|}{\textbf{Frame Counts}} \\
-\cline{2-4}
-& \textbf{\textit{Positive}} & \textbf{\textit{Negative}} & \textbf{\textit{Total}} \\
-\hline
-0\%                 & 2,401 & 0     & 2,401  \\
-20\%                & 2,401 & 600   & 3,001  \\
-40\%                & 2,401 & 1,600 & 4,001  \\
-60\%                & 2,401 & 3,602 & 6,003  \\
-80\%                & 2,401 & 9,604 & 12,005 \\
-\hline
-Val $^{\dagger}$      & 300   & 1,272 & 1,572  \\
-Test $^{\dagger}$     & 300   & 1,272 & 1,572  \\
-\hline
-\multicolumn{4}{l}{$^{\dagger}$ Evaluation sets feature an 80.9\% negative ratio.}
-\end{tabular}
-\label{tab:splits}
-\end{center}
-\end{table} % DONE 
+Runtime efficiency is profiled on an NVIDIA RTX 4060 GPU using single-image batches ($640 \times 640$, FP32 precision) averaged over 200 iterations after 50 warm-up runs. While dedicated automotive system-on-chip (SoC) hardware with passive thermal limits (10--15\,W) represents the ultimate target deployment, this GPU benchmark establishes an execution latency baseline. As shown in Fig.~\ref{fig:latency_throughput}, all four models execute well within the 30\,ms real-time deadline (7.7--21.7\,ms per frame, achieving 46.1--129.2\,FPS) with peak memory consumption under 1.5\,GB of VRAM, confirming that architectural complexity does not violate frame-rate requirements.
 \section{Experimental Results}
 
 \subsection{Negative-to-Positive Ratio Sweep}
 \label{subsec:results_ratio}
-To address RQ1, we evaluate how the proportion of negative training frames affects cue detection accuracy and false-alarm suppression. We train each detector across the five negative-frame ratios in Table~\ref{tab:splits}: 0\%, 20\%, 40\%, 60\%, and 80\%, corresponding to negative-to-positive frame ratios of $0:1$, $0.25:1$, $0.67:1$, $1.50:1$, and $4.00:1$. Fig.~\ref{fig:ratio_sweep} reports detection metrics and false-positive rates on the held-out test set (1,272 negative frames).
+To address RQ1, we evaluate each detector across five negative-to-positive training ratios: 0\%, 20\%, 40\%, 60\%, and 80\% ($0:1$ to $4.00:1$; Table~\ref{tab:splits}). Fig.~\ref{fig:ratio_sweep} presents detection accuracy and false-positive rates on the held-out test set (1,272 negative frames).
 
 \begin{figure}[htbp]
 \centering
@@ -590,17 +569,59 @@ To address RQ1, we evaluate how the proportion of negative training frames affec
 ] coordinates { (0, 0.9423) (20, 0.9423) (40, 0.9642) (60, 0.9749) (80, 0.9524) };
 \end{axis}
 \end{tikzpicture}
-\caption{Impact of negative-to-positive curation ratios (RQ1): (a) false alarms per 1{,}000 frames (FP/1k) exhibit an overall downward trajectory across all models as negative ratios increase (converging at 80\% despite a transient rise for YOLO26n between 40\% and 60\%); (b) core detection accuracy ($\text{mAP}_{50}$) remains stable. Distinct marker shapes and line styles ensure readability in greyscale.}
+\caption{Impact of negative-to-positive curation ratios (RQ1): (a) false alarms per 1{,}000 frames (FP/1k) across curation ratios; (b) core detection accuracy ($\text{mAP}_{50}$). Distinct marker shapes and line styles provide visual encoding for greyscale readability.}
 \label{fig:ratio_sweep}
 \end{figure}
+\begin{table}[htbp]
+\caption{Negative-Frame Ratio Sweep across Architectures (RQ1)}
+\label{tab:rq1}
+\begin{center}
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+\textbf{Det.} & \textbf{$r$} & \textbf{$\mathrm{mAP}_{50}$} & \textbf{$\mathrm{mAP}_{50:95}$} & \textbf{P} & \textbf{R} & \textbf{FP/1k} \\
+\hline
+\multirow{5}{*}{YOLO11n}
+& 0\%  & 0.9824 & 0.7570 & 0.8576 & 0.9787 & 67.22 \\
+& 20\% & 0.9838 & 0.7524 & 0.9283 & 0.9814 & 31.05 \\
+& 40\% & 0.9919 & 0.7711 & 0.9308 & \textbf{0.9831} & 22.01 \\
+& 60\% & 0.9899 & \textbf{0.7723} & 0.9468 & 0.9806 & 9.83  \\
+& 80\% & \textbf{0.9933} & 0.7606 & \textbf{0.9644} & 0.9766 & \textbf{4.72} \\
+\hline
+\multirow{5}{*}{YOLO26n}
+& 0\%  & 0.9170 & 0.7086 & 0.8557 & 0.9105 & 80.59 \\
+& 20\% & 0.9729 & 0.7546 & 0.9306 & 0.9763 & 16.90 \\
+& 40\% & 0.9726 & 0.7388 & 0.9224 & 0.9519 & 9.43  \\
+& 60\% & 0.9660 & 0.7594 & \textbf{0.9587} & 0.9086 & 10.22 \\
+& 80\% & \textbf{0.9736} & \textbf{0.7671} & 0.9217 & \textbf{0.9794} & \textbf{3.14} \\
+\hline
+\multirow{5}{*}{YOLO12n}
+& 0\%  & 0.9910 & 0.7496 & 0.9228 & 0.9823 & 45.20 \\
+& 20\% & 0.9757 & 0.7449 & 0.8954 & 0.9863 & 35.77 \\
+& 40\% & 0.9866 & 0.7659 & 0.9199 & 0.9949 & 18.86 \\
+& 60\% & 0.9888 & \textbf{0.7766} & 0.9348 & \textbf{0.9960} & 9.43  \\
+& 80\% & \textbf{0.9925} & 0.7529 & \textbf{0.9621} & 0.9767 & \textbf{7.08} \\
+\hline
+\multirow{5}{*}{YOLOv10n}
+& 0\%  & 0.9423 & 0.7287 & 0.9065 & 0.8831 & 57.39 \\
+& 20\% & 0.9423 & 0.7270 & 0.8833 & 0.9400 & 21.23 \\
+& 40\% & 0.9642 & \textbf{0.7568} & 0.8813 & \textbf{0.9788} & 14.94 \\
+& 60\% & \textbf{0.9749} & 0.7525 & \textbf{0.9221} & 0.9758 & \textbf{4.72} \\
+& 80\% & 0.9524 & 0.7384 & 0.9010 & 0.9024 & \textbf{4.72} \\
+\hline
+\end{tabular}
+\end{center}
 
-\textbf{High-Ratio Convergence:} As shown in Fig.~\ref{fig:ratio_sweep}, models trained without negative frames (0\%) generate high false-alarm rates, ranging from 45.20 to 80.59\,FP/1k. Increasing the negative ratio to 80\% reduces false alarms across all four architectures, converging to between 3.14 and 7.08\,FP/1k. This represents a $6.4\times$ to $25.7\times$ reduction in false alarms relative to the 0\% baseline. Across all 20 evaluated configurations, negative ratio shows a strong inverse correlation with FP/1k (Spearman $\rho = -0.937, p < 10^{-4}$).
+\par\vspace{-1pt}
+{\footnotesize Dual-seed means ($\text{seed} \in \{42, 43\}$) for $r \le 40\%$; single seed ($\text{seed} = 42$) otherwise. FP/1k is computed at the fixed operational threshold $\tau = 0.25$ (NMS IoU $0.70$) over 1{,}272 negative test frames. Precision (P) and recall (R) are reported at the confidence threshold that maximizes $F_1$ on the validation split for each configuration, which may differ from $\tau = 0.25$; the two are therefore two distinct operating points and should not be read as arising from the same confusion matrix. Bold indicates best performance per architecture.\par}
+\end{table}
+\textbf{Convergence at High Ratios:} Detectors trained without negative frames (0\%) produce high false-alarm rates of 45.20 to 80.59\,FP/1k (Fig.~\ref{fig:ratio_sweep}). Increasing negative frames to 80\% reduces false alarms across all models to a narrow range of 3.14 to 7.08\,FP/1k, representing a $6.4\times$ to $25.7\times$ reduction. Across all 20 evaluated configurations, the negative ratio strongly correlates inversely with FP/1k (Spearman $\rho = -0.937, p < 10^{-4}$). We note that these 20 points are not fully independent observations, since each of the four architectures contributes five ratios (a repeated-measures structure); the reported $p$-values should be read as descriptive rather than as formal hypothesis tests, as no correction for this clustering is applied.
 
-\textbf{Cue Sensitivity and Localization Stability:} Precision improves with negative ratio (Spearman $\rho = +0.546, p < 0.05$), driven directly by the reduction in false alarms. Recall remains uncorrelated with negative ratio (Spearman $\rho = +0.012, p > 0.50$), showing that background negative frames do not cause under-detection. Localization accuracy ($\text{mAP}_{50:95}$) remains stable across all splits, ranging between 0.7086 and 0.7766.
+\textbf{Cue Sensitivity and Localization Stability:} Precision improves significantly with negative ratio (Spearman $\rho = +0.546, p < 0.05$) due directly to false-alarm suppression. In contrast, recall remains uncorrelated with negative ratio (Spearman $\rho = +0.012, p > 0.50$), confirming that negative frames do not cause under-detection. Localization accuracy ($\text{mAP}_{50:95}$) remains within a narrow operational band across all configurations (0.7086--0.7766), showing no systematic degradation with increasing negative exposure.
 
-\textbf{Trajectory Divergence at Intermediate Ratios:} While all models converge at 80\% negatives, their trajectories differ between 20\% and 60\%. YOLO26n drops from 80.59 to 16.90\,FP/1k at 20\% negatives, achieving early suppression. In contrast, YOLO11n, YOLO12n, and YOLOv10n show a more gradual decline, requiring ratios between 60\% and 80\% to reach comparable false-alarm rates.
+\textbf{Intermediate Trajectory Differences:} Although all models converge at 80\% negatives, their trajectories differ between 20\% and 60\%. YOLO26n drops sharply to 16.90\,FP/1k at 20\% negatives, plateauing early. In contrast, YOLO11n and YOLO12n show a more gradual decline requiring ratios between 60\% and 80\%, whereas YOLOv10n achieves early suppression by 40\% (14.94\,FP/1k) before reaching its 4.72\,FP/1k floor at 60\%.
 
-\begin{figure*}[t]
+\begin{figure}[htbp]
 \centering
 \definecolor{c11n}{RGB}{31,119,180}
 \definecolor{c26n}{RGB}{214,39,40}
@@ -608,86 +629,91 @@ To address RQ1, we evaluate how the proportion of negative training frames affec
 \definecolor{c10n}{RGB}{255,127,14}
 \begin{tikzpicture}
 \begin{axis}[
+  name=mainplot,
   scale only axis,
-  width=0.85\textwidth,
-  height=6.2cm,
+  width=5.8cm,
+  height=4.6cm,
   xlabel={Negative Ratio (\%)},
-  ylabel={FP/1k (measured, log scale)},
+  ylabel={FP / 1k Frames},
+  xlabel style={font=\scriptsize\bfseries, yshift=2pt},
+  ylabel style={font=\scriptsize\bfseries, yshift=-3pt},
+  tick label style={font=\tiny},
   xtick={0,20,40,60,80},
-  xmin=0, xmax=95,
+  xmin=0, xmax=92,
   ymode=log,
   ymin=2, ymax=100,
+  ytick={2, 5, 10, 20, 50, 100},
+  log ticks with fixed point,
   axis y line*=left,
+  grid=both,
+  grid style={line width=0.1pt, draw=gray!20},
+  major grid style={line width=0.2pt, draw=gray!35},
   legend style={
-    font=\scriptsize,
-    at={(0.98,0.98)},
+    font=\tiny,
+    at={(0.97,0.97)},
     anchor=north east,
-    draw=gray!60,
+    draw=gray!50,
     fill=white,
     fill opacity=0.92,
     text opacity=1,
-    inner sep=3pt,
-    row sep=1.5pt
+    inner sep=2pt,
+    row sep=-1pt
   },
   legend cell align={left},
-  title={False-Alarm Rate and Projected Nuisance Alerts vs. Negative Ratio},
-  title style={font=\footnotesize\bfseries}
+  title={False Alarms \& Nuisance Alerts vs. Ratio},
+  title style={font=\footnotesize\bfseries, yshift=-3pt}
 ]
-% --- Swept Curves: Randomly Sampled Negatives ---
-\addplot[color=c11n, mark=square*, mark size=2.2pt, thick] coordinates {(0,67.22)(20,31.05)(40,22.01)(60,9.83)(80,4.72)};
-\addlegendentry{YOLO11n (Randomly Sampled)}
+\addplot[color=c11n, mark=triangle*, mark size=2.0pt, thick] coordinates {(0,67.22)(20,31.05)(40,22.01)(60,9.83)(80,4.72)};
+\addlegendentry{YOLO11n}
 
-\addplot[color=c26n, mark=triangle*, mark size=2.6pt, thick] coordinates {(0,80.59)(20,16.90)(40,9.43)(60,10.22)(80,3.14)};
-\addlegendentry{YOLO26n (Randomly Sampled)}
+\addplot[color=c26n, mark=*, mark size=1.7pt, thick] coordinates {(0,80.59)(20,16.90)(40,9.43)(60,10.22)(80,3.14)};
+\addlegendentry{YOLO26n}
 
-\addplot[color=c12n, mark=diamond*, mark size=2.4pt, thick] coordinates {(0,45.20)(20,35.77)(40,18.86)(60,9.43)(80,7.08)};
-\addlegendentry{YOLO12n (Randomly Sampled)}
+\addplot[color=c12n, mark=diamond*, mark size=2.0pt, thick] coordinates {(0,45.20)(20,35.77)(40,18.86)(60,9.43)(80,7.08)};
+\addlegendentry{YOLO12n}
 
-\addplot[color=c10n, mark=*, mark size=2.0pt, thick] coordinates {(0,57.39)(20,21.23)(40,14.94)(60,4.72)(80,4.72)};
-\addlegendentry{YOLOv10n (Randomly Sampled)}
+\addplot[color=c10n, mark=square*, mark size=1.7pt, thick] coordinates {(0,57.39)(20,21.23)(40,14.94)(60,4.72)(80,4.72)};
+\addlegendentry{YOLOv10n}
 
-% --- 40% Hard-Mined Stars ---
-\addplot[only marks, mark=star, mark size=5.2pt, line width=1.2pt, color=c11n] coordinates {(37.0,7.08)};
-\addplot[only marks, mark=star, mark size=5.2pt, line width=1.2pt, color=c26n] coordinates {(39.0,6.29)};
-\addplot[only marks, mark=star, mark size=5.2pt, line width=1.2pt, color=c12n] coordinates {(41.0,6.29)};
-\addplot[only marks, mark=star, mark size=5.2pt, line width=1.2pt, color=c10n] coordinates {(43.0,7.08)};
-
-\addlegendimage{only marks, mark=star, mark size=5.2pt, line width=1.2pt, color=black}
+% Hard-mined stars clustered tightly at 40%
+\addplot[only marks, mark=star, mark size=3.4pt, color=c11n] coordinates {(39.0, 7.08)};
+\addplot[only marks, mark=star, mark size=3.4pt, color=c26n] coordinates {(39.7, 6.29)};
+\addplot[only marks, mark=star, mark size=3.4pt, color=c12n] coordinates {(40.3, 6.29)};
+\addplot[only marks, mark=star, mark size=3.4pt, color=c10n] coordinates {(41.0, 7.08)};
+\addlegendimage{only marks, mark=star, mark size=3.4pt, color=black}
 \addlegendentry{40\% Hard-Mined}
 
-% --- Leader Lines to Callout Badges ---
-\draw[color=c11n, line width=0.6pt, -{Stealth[scale=0.6]}] (axis cs:32.8, 4.3) -- (axis cs:36.4, 6.6);
-\draw[color=c26n, line width=0.6pt, -{Stealth[scale=0.6]}] (axis cs:37.5, 3.2) -- (axis cs:38.7, 5.6);
-\draw[color=c12n, line width=0.6pt, -{Stealth[scale=0.6]}] (axis cs:42.5, 3.2) -- (axis cs:41.3, 5.6);
-\draw[color=c10n, line width=0.6pt, -{Stealth[scale=0.6]}] (axis cs:47.2, 4.3) -- (axis cs:43.6, 6.6);
+% Circle enclosing all stars and annotation pointer
+\node[draw=black, circle, inner sep=4.5pt, line width=0.6pt] (starcluster) at (axis cs:40, 6.68) {};
+\draw[<-, >=stealth, line width=0.6pt] (starcluster.south west) -- ++(-0.6cm, -0.45cm)
+  node[below, font=\scriptsize\bfseries, align=center] {False-Positive\\Trained Methods};
 
-% --- Model Callout Badges ---
-\node[font=\tiny\bfseries, text=c11n, fill=white, draw=c11n!70, rounded corners=1.5pt, inner sep=1.2pt] at (axis cs:32.0, 3.7) {11n};
-\node[font=\tiny\bfseries, text=c26n, fill=white, draw=c26n!70, rounded corners=1.5pt, inner sep=1.2pt] at (axis cs:37.0, 2.7) {26n};
-\node[font=\tiny\bfseries, text=c12n, fill=white, draw=c12n!70, rounded corners=1.5pt, inner sep=1.2pt] at (axis cs:43.0, 2.7) {12n};
-\node[font=\tiny\bfseries, text=c10n, fill=white, draw=c10n!70, rounded corners=1.5pt, inner sep=1.2pt] at (axis cs:48.0, 3.7) {v10n};
 \end{axis}
 
 \begin{axis}[
   scale only axis,
-  width=0.85\textwidth,
-  height=6.2cm,
+  width=5.8cm,
+  height=4.6cm,
   hide x axis,
   ymode=log,
   ymin=174.7, ymax=8737,
   ytick={200,500,1000,2000,5000},
+  yticklabels={200, 500, 1k, 2k, 5k},
+  tick label style={font=\tiny},
   minor tick num=0,
   axis y line*=right,
-  ylabel={Alerts/hr (30\,FPS, derived)},
+  ylabel={Alerts / hr (30\,FPS)},
+  ylabel style={font=\scriptsize\bfseries, yshift=3pt}
 ]
 \end{axis}
 \end{tikzpicture}
-\caption{False-positive rate (left axis, measured) and projected hourly nuisance alerts at 30\,FPS (right axis, derived via~\eqref{eq:ah}) as a function of negative-frame ratio. Solid curves track uniform random negative curation, while individual stars denote each model's 40\% hard-negative-mined configuration.}
+\caption{Measured false-positive rates (left axis) and projected hourly alerts at 30\,FPS (right axis; derived via~\eqref{eq:ah}) versus negative ratio. Both metrics share synchronized logarithmic scales due to linear scaling ($\mathcal{A}_h = 87.4 \times \text{FP/1k}$). Circled cluster highlights 40\% hard-negative mining results; star markers are horizontally jittered (39.0--41.0) purely for visual separation, all four represent the identical 40\% ratio.}
 \label{fig:results_combined}
-\end{figure*}
+\end{figure}
+
 \subsection{Hard-Negative Mining vs. Random Negatives}
 \label{subsec:results_curation}
-To address RQ2, we evaluate whether replacing randomly sampled negatives with hard negatives improves false-alarm suppression at matched dataset size. Following Section~\ref{subsec:mining}, we extract false positives produced by the 0\% baseline detector at $\tau = 0.25$, backfilling with random negatives to reach $N_{\mathrm{target}} = 1{,}600$ negative frames (4,001 total frames, matching the 40\% reference ratio). Fig.~\ref{fig:hard_mining_bars} compares two-seed sample means ($\text{seed} \in \{42, 43\}$) for random negative sampling versus hard-negative mining.
+To address RQ2, we evaluate whether hard negatives improve suppression compared to random background frames at matched dataset volume. Following Section~\ref{subsec:mining}, we harvest false positives from the 0\% baseline detector ($\tau = 0.25$) and backfill with random negatives to reach 1,600 negative frames (4,001 total frames, matching the 40\% ratio). Fig.~\ref{fig:hard_mining_bars} presents two-seed sample means ($\text{seed} \in \{42, 43\}$) comparing random negative sampling with hard-negative mining.
 
 \begin{figure}[htbp]
 \centering
@@ -813,19 +839,19 @@ To address RQ2, we evaluate whether replacing randomly sampled negatives with ha
 };
 \end{axis}
 \end{tikzpicture}
-\caption{Hard-negative mining versus random negative sampling ($r_{\mathrm{ref}} = 40\%$, RQ2): (a) false alarms per 1{,}000 frames (FP/1k) decrease under hard mining across all architectures; (b) core detection accuracy ($\text{mAP}_{50}$) remains stable. Bars reflect two-seed means with error bars indicating $\pm 1$ standard deviation.}
+\caption{Hard-negative mining versus random negative sampling ($r_{\mathrm{ref}} = 40\%$, RQ2): (a) false alarms per 1{,}000 frames (FP/1k); (b) core detection accuracy ($\text{mAP}_{50}$). Bars report dual-seed sample means with $\pm 1$ standard deviation error bars.}
 \label{fig:hard_mining_bars}
 \end{figure}
 
-\textbf{Architectural Variations in Suppression:} As shown in Fig.~\ref{fig:hard_mining_bars}, hard-negative mining lowers FP/1k across all four models, with distinct responses across architectures:
+\textbf{Architectural Variation in Suppression:} Hard mining reduces false alarms across all four architectures, but the magnitude depends on model design (Fig.~\ref{fig:hard_mining_bars}):
 \begin{itemize}
-    \item \textit{Attention and Dual-Assignment Models:} YOLO11n, YOLO12n, and YOLOv10n show substantial false-alarm reductions: $-67.8\%$ for YOLO11n ($22.01 \to 7.08$\,FP/1k), $-66.7\%$ for YOLO12n ($18.86 \to 6.29$\,FP/1k), and $-52.6\%$ for YOLOv10n ($14.94 \to 7.08$\,FP/1k). Localization quality also improves, with $\text{mAP}_{50:95}$ increasing by up to $+0.018$ in YOLO12n.
-    \item \textit{Convolutional Models:} In comparison, YOLO26n shows a smaller reduction of $-33.3\%$ ($9.43 \to 6.29$\,FP/1k), indicating diminishing returns from hard mining relative to random background frames.
+    \item \textit{Attention and Dual-Assignment Models:} YOLO11n, YOLO12n, and YOLOv10n achieve substantial reductions: $-67.8\%$ for YOLO11n ($22.01 \to 7.08$\,FP/1k), $-66.7\%$ for YOLO12n ($18.86 \to 6.29$\,FP/1k), and $-52.6\%$ for YOLOv10n ($14.94 \to 7.08$\,FP/1k). Localization quality also improves, with $\text{mAP}_{50:95}$ increasing by up to $+0.018$ in YOLO12n.
+    \item \textit{Purely Convolutional Models:} YOLO26n shows a smaller reduction of $-33.3\%$ ($9.43 \to 6.29$\,FP/1k), demonstrating diminishing returns from targeted mining over random background frames.
 \end{itemize}
+We note that with dual-seed training ($n=2$), these comparisons reflect empirical sample mean differences rather than formal hypothesis tests; given the variance observed in some configurations (e.g., YOLO26n random-40\% standard deviation of $\pm 5.56$\,FP/1k), larger multi-seed batteries are required to establish statistical significance.
 
-\subsection{Nuisance Alert Projection}
-\label{subsec:results_nuisance}
-To evaluate operational reliability, we project measured false-alarm rates into expected hourly nuisance alerts ($\mathcal{A}_h$) using~\eqref{eq:ah}. In natural driving, target distraction events are infrequent, with baseline driving accounting for $p_{\mathrm{neg}} \approx 0.809$ (80.9\%) of operational frames. Table~\ref{tab:nuisance_alerts} reports projected alert rates across three streaming rates: 5\,FPS (low-power sampling), 15\,FPS (standard embedded vision), and 30\,FPS (full real-time streaming).
+
+\subsection{Nuisance Alert Projection} \label{subsec:results_nuisance} To evaluate operational reliability, we project measured false-alarm rates into expected hourly nuisance alerts ($\mathcal{A}_h$) using~\eqref{eq:ah}. While on-road naturalistic driving research indicates that potentially distracting secondary-task engagement occupies only a minority of total driving time \cite{stutts2005}, we evaluate alert projections using our held-out test stream prevalence of $p_{\mathrm{neg}} = 0.809$ (80.9\% negative frames) to maintain empirical consistency with our test partition. Table~\ref{tab:nuisance_alerts} reports projected alert rates across three streaming rates: 5\,FPS (low-power sampling), 15\,FPS (standard embedded vision), and 30\,FPS (full real-time streaming).
 
 \begin{table}[t]
 \caption{Projected Nuisance Alerts per Hour ($\mathcal{A}_h$) Across Negative Ratios and Frame Rates}
@@ -863,64 +889,83 @@ To evaluate operational reliability, we project measured false-alarm rates into 
 \end{tabular}
 \end{center}
 \vspace{-1pt}
-{\footnotesize Projected via~\eqref{eq:ah} using $\mathcal{A}_h = 3.6 \times r \times p_{\mathrm{neg}} \times \text{FP/1k}$ with natural negative prevalence $p_{\mathrm{neg}} = 0.809$. Inputs correspond to Fig.~\ref{fig:ratio_sweep} and Fig.~\ref{fig:hard_mining_bars}. Bold indicates the lowest alert rate per architecture.}
+{\footnotesize Projected via~\eqref{eq:ah} with $p_{\mathrm{neg}} = 0.809$. FP/1k inputs correspond to Fig.~\ref{fig:ratio_sweep} and Fig.~\ref{fig:hard_mining_bars}. Bold indicates the lowest alert rate per architecture.}
 \end{table}
 
-\textbf{Alert Frequency and Automation Disuse:} As detailed in Table~\ref{tab:nuisance_alerts}, models trained without negative frames (0\%) produce impractically high false-alarm rates. At 30\,FPS, unregularized models trigger between 3{,}949 and 7{,}041 nuisance alerts per hour, averaging 1 to 2 false detections per second. At 5\,FPS, baseline models trigger 658 to 1{,}174 false alerts per hour. Frequent false alarms lead directly to alert fatigue and automation disuse \cite{lambert2026chinese, parasuraman1997humans}.
+\textbf{Alert Fatigue and Automation Disuse:} Models trained without negative frames (0\%) trigger impractically high alert frequencies (Table~\ref{tab:nuisance_alerts}). At 30\,FPS, unregularized detectors trigger 3{,}949 to 7{,}041 alerts/hr (1--2 false alerts per second). Even at 5\,FPS, they generate 658 to 1{,}174 alerts/hr. In human-automation interaction theory, this alert frequency exceeds driver tolerance, directly inducing alert fatigue and automation disuse \cite{lambert2026chinese, parasuraman1997humans}.
 
-\textbf{Secondary Compute and Thermal Load:} Frequent false alarms trigger downstream tracking routines continuously, creating processing spikes that risk thermal throttling on embedded chips \cite{florez2024real, benoitcattin2020thermal}.
+\textbf{Cascading Edge Compute and Thermal Load:} Continuous false alarms persistently trigger downstream facial tracking, logging, and video encoding routines. The resulting processing spikes can induce thermal throttling and reduce edge throughput by over 40\% \cite{florez2024real, benoitcattin2020thermal}.
 
-\textbf{Mitigation via Negative Curation:} Scaling negative training frames reduces projected alert rates by up to 96.1\%. At 80\% negative prevalence, alert rates decline to 274--619\,alerts/hr at 30\,FPS and 46--103\,alerts/hr at 5\,FPS. Table~\ref{tab:nuisance_alerts} also indicates that targeted hard-negative mining achieves comparable suppression at half the negative volume: at a 40\% ratio, hard-mined models produce 550--619\,alerts/hr at 30\,FPS, reducing baseline alerts by over 84\%.
+\textbf{Mitigation via Negative Curation:} Curating negative training frames lowers projected alert rates by up to 96.1\%. At an 80\% ratio, alerts drop to 274--619\,alerts/hr at 30\,FPS and 46--103\,alerts/hr at 5\,FPS. Furthermore, hard-negative mining provides comparable suppression with one-third the dataset volume and one-sixth the negative frames: at 40\%, hard-mined models produce 550--619\,alerts/hr at 30\,FPS, an 86\% to 92\% reduction from the 0\% baseline depending on architecture.
 
-These projections highlight an engineering distinction: \textit{inference latency depends on architecture, whereas operational reliability depends on curation}. While all four models achieve real-time execution speeds (7.7--21.7\,ms, Fig.~\ref{fig:latency_throughput}), data curation determines whether a lightweight detector can operate without triggering alert fatigue or thermal throttling.
-% DONE
+These projections highlight an engineering distinction: \textit{inference latency depends on architecture, whereas operational reliability depends on data curation}. While all four models execute within real-time limits (7.7--21.7\,ms; Fig.~\ref{fig:latency_throughput}), negative curation determines whether a detector avoids alert fatigue and thermal throttling.
+
 \section{Discussion}
+\label{sec:discussion}
 
 \subsection{Architectural Mechanisms and Practical Curation Guidelines}
 \label{subsec:guidelines}
-Our empirical findings reveal that a detector's internal feature-aggregation mechanism influences its response to negative-frame curation:
+A detector's feature-aggregation mechanism determines how it responds to negative-frame curation.
 
-\textbf{Mechanistic Comparison:} Random negative sampling predominantly selects low-entropy background patches that produce small loss gradients. For convolutional architectures like YOLO26n, localized $3 \times 3$ re-parameterized convolution (RepConv) kernels suppress repetitive cabin textures using uniform background frames. Consequently, YOLO26n reaches an early suppression plateau at 20\% negatives and derives modest benefit from hard mining ($-33.3\%$).
+\textbf{Mechanistic Divergence:} Random negative sampling primarily selects low-entropy background patches that generate minimal training gradients. Purely convolutional networks, such as YOLO26n, rely on localized $3 \times 3$ re-parameterized convolutions (RepConv). These layers quickly learn repetitive cabin textures, causing YOLO26n to plateau at a 20\% negative ratio and gain modest benefit from hard-negative mining ($-33.3\%$). In contrast, models using self-attention (YOLO11n), area attention (YOLO12n), or dual-label assignment (YOLOv10n) capture wider spatial context. Without negative frames, attention layers often mistake cabin lighting or seat contours for driver cues. Mined hard negatives provide high-entropy distractors that force attention heads to distinguish cabin structures from driver actions. For YOLOv10n, mined negatives also penalize over-assignment in the auxiliary head, sharpening the decision boundary of the primary inference branch.
 
-In contrast, architectures using self-attention (YOLO11n), area attention (YOLO12n), or dual-label assignment (YOLOv10n) model wider spatial dependencies. Without background exposure, attention layers can correlate ambient artifacts, such as lighting glare or cabin contours, with target cues. Mined hard negatives provide high-entropy distractors that help attention projection heads separate cabin geometry from true driver cues. For YOLOv10n, mined negatives also penalize over-assignment in the auxiliary head, sharpening the decision boundary of the primary inference branch.
+\textbf{Per-Seed Stability:} In our two-seed evaluations, attention-based and dual-assignment models showed consistent suppression across runs, whereas YOLO26n exhibited marked variability (ranging from 0.0\% under Seed~42 to 47.0\% under Seed~43). While this suggests potential seed sensitivity in localized convolutional backbones, evaluations across a larger battery of seeds are required before drawing definitive architectural conclusions.
 
-\textbf{Per-Seed Stability and Saturation:} Attention-equipped models (YOLO11n, YOLO12n) and dual-assignment architectures (YOLOv10n) demonstrate consistent metrics across random seeds. In contrast, YOLO26n exhibits seed-dependent sensitivity, with reductions ranging from 0.0\% under Seed~42 to 47.0\% under Seed~43.
-
-\textbf{Practical Curation Guidelines:} These findings provide two engineering guidelines for edge DMS pipelines:
+\textbf{Practical Curation Guidelines:} These empirical results establish two engineering guidelines for edge driver monitoring systems (DMS):
 \begin{enumerate}
-    \item \textit{Curate for Attention, Sample for Convolutions:} Systems deploying purely convolutional backbones achieve sufficient suppression through uniform random background sampling. Conversely, systems employing attention-centric or dual-assignment backbones should prioritize hard-negative mining, unlocking 52.6\% to 67.8\% additional false-alarm suppression at matched training compute.
-    \item \textit{Prevalence Trade-offs (40\% vs. 80\%):} When training budgets permit larger datasets, an 80\% negative ratio ($4.00:1$ ratio) achieves the lowest false-alarm floor for most architectures (3.14--4.72\,FP/1k), though attention-based models such as YOLO12n achieve their lowest floor under 40\% hard mining (6.29\,FP/1k vs. 7.08\,FP/1k at 80\%). Where training compute or iteration time is constrained, a 40\% ratio curated with hard negatives delivers comparable suppression (6.29--7.08\,FP/1k) with one-third the total dataset volume (and one-sixth the negative frames).
+    \item \textit{Backbone-Targeted Curation:} Uniform random sampling provides sufficient false-alarm suppression for convolutional backbones. However, attention-centric and dual-assignment models require hard-negative mining, yielding an additional 52.6\% to 67.8\% false-alarm reduction at matched training compute.
+    \item \textit{Prevalence Trade-Offs (40\% vs. 80\%):} An 80\% negative ratio achieves the lowest false-alarm floor for most architectures (3.14--4.72\,FP/1k), though YOLO12n reaches its minimum under 40\% hard mining (6.29\,FP/1k). Where storage or compute is constrained, a 40\% hard-mined ratio approaches 80\% random suppression (6.29--7.08\,FP/1k) while requiring only one-third the total dataset volume and one-sixth the negative frames.
 \end{enumerate}
+
 \subsection{Limitations}
 \label{subsec:limitations}
-This study has three primary limitations. First, a single annotator labeled the dataset without an independent second annotator to measure inter-annotator agreement. Although the protocol enforced strict mutual exclusion, ambiguous cases may reflect individual bias.
+This evaluation has six primary limitations:
 
-Second, the evaluation is limited to RGB video feeds. Commercial systems frequently use near-infrared (NIR) or depth cameras to maintain reliability under low-light conditions. Consequently, our benchmarks do not account for sensor-specific noise patterns or active infrared illumination.
+\textbf{Single-Annotator Labeling:} A single annotator labeled the visual cues without an independent review, which may introduce subjective bias in ambiguous edge cases.
 
-Finally, we evaluate isolated per-frame inference without temporal smoothing, such as Kalman filtering or multi-frame consensus. Because production systems typically require detections to persist across consecutive frames before issuing a warning, our projected alert rates ($\mathcal{A}_h$) represent an unmitigated baseline rather than a complete multi-stage tracking pipeline.% DONE
-\section{Conclusion} % DONE
-This study evaluated negative-frame curation and hard-negative mining to suppress false alarms in lightweight, edge-deployed Driver Monitoring Systems (DMS). Across four You Only Look Once (YOLO) architectures with fewer than 3~million parameters, increasing the negative-to-positive training ratio from 0\% to 80\% reduced false positives per 1{,}000 frames (FP/1k) by $6.4\times$ to $25.7\times$. Core detection sensitivity ($\text{mAP}_{50:95}$), precision, and recall remained stable across all ratios. At a matched dataset volume, replacing random background frames with hard-mined false positives yielded an additional 33.3\% to 67.8\% false-alarm reduction. Attention-based models (YOLO11n, YOLO12n) and dual-assignment architectures (YOLOv10n) achieved the largest gains from hard mining, whereas the purely convolutional model (YOLO26n) reached early suppression using random negative frames alone. In operational driving projections, these curation strategies reduced projected nuisance alerts from thousands per hour to under 620\,alerts/hr at 30\,FPS, directly curbing driver alert fatigue and embedded computational load.
+\textbf{Simplified Cue Annotation and Mutual Exclusion:} Annotations enforced a single bounding box per positive frame and a strict mutual-exclusion rule between overlapping behaviors (e.g., covering a yawn is labeled exclusively as hand-over-mouth). In naturalistic driving, concurrent and overlapping cues frequently co-occur; this protocol simplifies the detection objective and may understate real-world false negatives when simultaneous behaviors arise.
 
-These findings show that negative-frame curation is as vital as model architecture for reliable edge deployment. Furthermore, curation strategies must match a detector's internal feature-aggregation mechanism: attention heads require high-entropy mined distractors to eliminate false correlations, whereas convolutional kernels regularize effectively on uniform background scenes. Despite these gains, this study has three shortcomings: the ground truth was produced by a single annotator, evaluations were conducted on isolated single-frame RGB feeds without temporal filtering, and hard-negative mining was restricted to a single closed-loop pass. Future work will extend these curation protocols to multi-modal near-infrared and depth feeds, integrate multi-frame temporal consensus into the alert projection, and evaluate iterative hard-negative mining across multiple training rounds.
-\begin{thebibliography}{17}
+\textbf{Single-Modality RGB Sensing:} The evaluation relies entirely on visible-light RGB video feeds without near-infrared (NIR) or active depth sensing commonly deployed for in-cabin night vision.
+
+\textbf{Isolated Frame-Level Inference:} Detections were evaluated per frame without temporal persistence filtering (e.g., Kalman tracking or sliding time-windows), yielding an unmitigated upper-bound alert baseline.
+
+\textbf{Driver Partition Overlap and Single-Pass Mining:} Splits were stratified across cue instances rather than subject-disjoint driver identities. Because frames were extracted at 1 FPS from continuous recordings, near-duplicate background frames from the same driver and session may appear in both a training split and a held-out split; this could inflate the reported false-alarm suppression relative to a fully subject-disjoint evaluation and should be treated as an upper bound on generalization until a driver-held-out replication is run. Hard-negative mining was also restricted to a single closed-loop iteration rather than multi-round continuous bootstrapping.
+
+\textbf{Desktop-GPU Deployment Proxy:} Latency and memory profiling (Section~\ref{subsec:deployment}) was performed on a desktop-class discrete GPU rather than an automotive-grade embedded SoC, and no power draw was measured. Absolute latency, memory, and thermal margins on production in-cabin hardware may differ from the desktop-proxy figures reported here.
+
+\section{Conclusion}
+This study evaluated negative-frame curation and hard-negative mining to suppress false alarms in edge-deployed Driver Monitoring Systems (DMS). Across four You Only Look Once (YOLO) architectures with fewer than 3~million parameters, increasing negative training frames from 0\% to 80\% reduced false positives per 1{,}000 frames (FP/1k) by $6.4\times$ to $25.7\times$. Core detection sensitivity ($\text{mAP}_{50:95}$) and recall remained stable while precision increased. At matched dataset volume, replacing random negative frames with hard-mined false positives achieved an additional 33.3\% to 67.8\% false-alarm reduction. Attention-based and dual-assignment models benefited most from hard negatives, whereas purely convolutional models achieved effective suppression using random background frames alone. In streaming projections, these curation protocols lowered nuisance alerts below 620\,alerts/hr at 30\,frames per second (FPS), mitigating driver alert fatigue and edge computational load.
+
+These findings show that dataset curation is as critical as architectural design for edge deployment. Furthermore, curation strategies must match the detector's internal feature-aggregation mechanism: attention heads require high-entropy mined distractors to eliminate false correlations, whereas convolutional kernels regularize effectively on uniform background scenes. 
+
+This study has six primary shortcomings: visual cues were labeled by a single annotator; annotations enforced single-cue mutual exclusion rather than simultaneous multi-cue interactions; evaluations relied exclusively on single-frame visible-light RGB feeds without temporal smoothing; mining was limited to a single pass; data splits were stratified across cue instances rather than disjoint drivers; and latency/memory profiling relied on a desktop-GPU proxy rather than validated automotive SoC hardware, with no power measurement. Future work should validate these curation protocols on multi-modal near-infrared (NIR) and depth sensors, incorporate multi-frame temporal consensus algorithms, evaluate iterative multi-round mining, test cross-subject generalization on disjoint driver splits, and repeat the latency and power-draw benchmarks on representative automotive SoC hardware.
+
+\section*{Reproducibility Statement}
+To facilitate independent verification, training configuration scripts, hyperparameter files, and exact frame split indices will be made publicly available in an open-source archive upon publication.
+\begin{thebibliography}{22}
 \sloppy
-\bibitem{ec2026safercars} European Commission, ``Type-approval requirements for general vehicle safety and the protection of vulnerable road users,'' \emph{Official Journal of the European Union}, Regulation (EU) 2019/2144, Commission Delegated Regulation (EU) 2021/1341, and Regulation (EU) 2023/2590, 2021--2023.
+\bibitem{ec2026safercars} European Parliament and Council of the European Union, Regulation (EU) 2019/2144 on type-approval requirements for the general safety of motor vehicles, Art.~6 and Annex~II (Advanced Driver Distraction Warning), 2019, as implemented by Commission Delegated Regulation (EU) 2023/2590 laying down detailed test procedures and technical requirements, 2023. Advanced Driver Distraction Warning (ADDW) systems are mandatory for newly type-approved vehicles from 7~July~2024 and for all newly registered vehicles from 7~July~2026.
 \bibitem{ortega2020dmd} J.~D. Ortega, N.~Kose, P.~Ca\~{n}as, M.-A. Chao, A.~Unnervik, M.~Nieto, O.~Otaegui, and L.~Salgado, ``DMD: A large-scale multi-modal driver monitoring dataset for attention and alertness analysis,'' in \emph{Proc. Eur. Conf. Comput. Vis. (ECCV) Workshops}, 2020, pp.~387--405.
 \bibitem{florez2024real} R.~Florez, F.~Palomino-Quispe, A.~B. Alvarez, R.~J. Coaquira-Castillo, and J.~C. Herrera-Levano, ``A real-time embedded system for driver drowsiness detection based on visual analysis of the eyes and mouth using convolutional neural network and mouth aspect ratio,'' \emph{Sensors}, vol.~24, no.~19, Art. no.~6261, Sep. 2024, doi: 10.3390/s24196261.
 \bibitem{liu2019edge} S.~Liu, L.~Liu, J.~Tang, B.~Yu, Y.~Wang, and W.~Shi, ``Edge computing for autonomous driving: Opportunities and challenges,'' \emph{Proc. IEEE}, vol.~107, no.~8, pp.~1697--1716, Aug. 2019, doi: 10.1109/JPROC.2019.2915983.
-\bibitem{lambert2026chinese} F.~Lambert, ``Chinese drivers are using plastic heads to fool Tesla's Autopilot cabin camera,'' \emph{Electrek}, Jun.~15, 2026. [Online]. Available: \url{https://electrek.co/2026/06/15/chinese-drivers-plastic-heads-fool-tesla-autopilot-camera/}. [Accessed: Sep.~6, 2026].
+\bibitem{lambert2026chinese} F.~Lambert, ``Tesla's self-driving safeguards fooled by \$30 doll heads,'' \emph{Electrek}, Jun.~15, 2026. [Online]. Available: \url{https://electrek.co/2026/06/15/chinese-drivers-plastic-heads-fool-tesla-autopilot-camera/}.
 \bibitem{benoitcattin2020thermal} T.~Benoit-Cattin, D.~Velasco-Montero, and J.~Fern\'{a}ndez-Berni, ``Impact of thermal throttling on long-term visual inference in a CPU-based edge device,'' \emph{Electronics}, vol.~9, no.~12, Art. no.~2106, 2020, doi: 10.3390/electronics9122106.
 \bibitem{martin2019drive} M.~Martin, A.~Roitberg, M.~Haurilet, M.~Horne, S.~Rei{\ss}, M.~Peng, and R.~Stiefelhagen, ``Drive\&Act: A multi-modal dataset for fine-grained driver behavior recognition in autonomous vehicles,'' in \emph{Proc. IEEE/CVF Int. Conf. Comput. Vis. (ICCV)}, 2019, pp.~2801--2810.
 \bibitem{canas2021detection} P.~Ca\~{n}as, J.~D. Ortega, M.~Nieto, and O.~Otaegui, ``Detection of distraction-related actions on DMD: An image and a video-based approach comparison,'' in \emph{Proc. Int. Conf. Comput. Vis. Theory Appl. (VISAPP)}, 2021, pp.~458--465.
-\bibitem{yolodrive2025} H.~Zhang, W.~Wang, and K.~Li, ``YOLO-Drive: Robust driver distraction recognition under fine-grained and overlapping behaviors,'' \emph{IEEE Trans. Intell. Veh.}, early access, 2025.
-\bibitem{yolov12dms2025} A.~Al-Mansoor, M.~S. Rahman, and T.~Hussain, ``Real-time multi-class driver behavior recognition for ADAS using YOLOv12,'' \emph{Int. J. Saf. Secur. Eng.}, vol.~15, no.~9, pp.~115--126, 2025.
-\bibitem{pyolov82024} M.~A. Hossain, R.~A. Khan, and S.~Sajid, ``P-YOLOv8: An efficient TinyML object detection framework for embedded driver distraction systems,'' \emph{arXiv preprint arXiv:2410.15602}, 2024.
-\bibitem{yolodrowsiness2025} K.~Sharma and R.~Patel, ``Comprehensive evaluation of real-time computer vision YOLO models for embedded driver drowsiness detection,'' \emph{arXiv preprint arXiv:2509.17498}, 2025.
+\bibitem{yolodrive2025} Z.~Yu, J.~Yu, S.~Fong, and Y.~Wu, ``YOLO-Drive: Robust driver distraction recognition under fine-grained and overlapping behaviors,'' \emph{Comput. Mater. Contin.}, vol.~87, no.~2, 2026, doi: 10.32604/cmc.2025.074899.
+\bibitem{yolov12dms2025} M.~Chaman, A.~El~Maliki, H.~El~Yanboiy, H.~Dahou, and A.~Hadjoudja, ``YOLOv12-based driver monitoring system: Real-time applications in ADAS,'' \emph{Int. J. Saf. Secur. Eng.}, vol.~15, no.~9, pp.~1921--1932, 2025, doi: 10.18280/ijsse.150915.
+\bibitem{pyolov82024} M.~R. Elshamy, H.~M. Emara, M.~R. Shoaib, and A.-H.~A. Badawy, ``P-YOLOv8: Efficient and accurate real-time detection of distracted driving,'' \emph{arXiv preprint arXiv:2410.15602}, 2024.
+\bibitem{yolodrowsiness2025} D.~Herath, C.~Abeyrathne, and P.~Jayaweera, ``Vision-based driver drowsiness monitoring: Comparative analysis of YOLOv5-v11 models,'' \emph{arXiv preprint arXiv:2509.17498}, 2025.
 \bibitem{parasuraman1997humans} R.~Parasuraman and V.~Riley, ``Humans and automation: Use, misuse, disuse, abuse,'' \emph{Hum. Factors}, vol.~39, no.~2, pp.~230--253, 1997.
 \bibitem{shrivastava2016ohem} A.~Shrivastava, A.~Gupta, and R.~Girshick, ``Training region-based object detectors with online hard example mining,'' in \emph{Proc. IEEE Conf. Comput. Vis. Pattern Recognit. (CVPR)}, 2016, pp.~761--769.
 \bibitem{lin2017focal} T.-Y. Lin, P.~Goyal, R.~Girshick, K.~He, and P.~Doll\'{a}r, ``Focal loss for dense object detection,'' in \emph{Proc. IEEE Int. Conf. Comput. Vis. (ICCV)}, 2017, pp.~2980--2988.
 \bibitem{ultralytics2023guidelines} G.~Jocher, A.~Chaurasia, and J.~Qiu, ``Ultralytics YOLO: Tips for best training results and background image curation,'' \emph{Ultralytics Documentation}, 2023. [Online]. Available: \url{https://docs.ultralytics.com/yolov5/tutorials/tips-for-best-training-results/}
-\bibitem{jin2018video} H.~Jin, Z.~Wang, and R.~Nevatia, ``Automated hard negative mining from video sequences for object detection,'' in \emph{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2018, pp.~142--158.
+\bibitem{jin2018video} S.~Jin, A.~RoyChowdhury, H.~Jiang, A.~Singh, A.~Prasad, D.~Chakraborty, and E.~Learned-Miller, ``Unsupervised hard example mining from videos for improved object detection,'' in \emph{Proc. Eur. Conf. Comput. Vis. (ECCV)}, 2018, pp.~153--169.
+\bibitem{stutts2005} J.~S. Stutts, J.~Feaganes, D.~Reinfurt, E.~Rodgman, C.~Hamlett, K.~Gish, and L.~Staplin, ``Driver's exposure to distractions in their natural driving environment,'' \emph{Accid. Anal. Prev.}, vol.~37, no.~6, pp.~1093--1101, 2005, doi: 10.1016/j.aap.2005.06.007.
+\bibitem{wang2024yolov10} A.~Wang, H.~Chen, L.~Liu, K.~Chen, Z.~Lin, J.~Han, and G.~Ding, ``YOLOv10: Real-time end-to-end object detection,'' \emph{arXiv preprint arXiv:2405.14458}, 2024.
+\bibitem{khanam2024yolov11} R.~Khanam and M.~Hussain, ``YOLOv11: An overview of the key architectural enhancements,'' \emph{arXiv preprint arXiv:2410.17725}, 2024.
+\bibitem{tian2025yolov12} Y.~Tian, Q.~Ye, and D.~Doermann, ``YOLOv12: Attention-centric real-time object detectors,'' \emph{arXiv preprint arXiv:2502.12524}, 2025.
+\bibitem{jocher2026yolo26} G.~Jocher, J.~Qiu, M.~Liu, S.~Lyu, F.~C. Akyon, and M.~E. Kalfaoglu, ``Ultralytics YOLO26: Unified real-time end-to-end vision models,'' \emph{arXiv preprint arXiv:2606.03748}, 2026.
 \end{thebibliography}
 
 \end{document}
