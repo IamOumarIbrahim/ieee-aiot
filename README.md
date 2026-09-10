@@ -5,7 +5,7 @@
   <img src="https://img.shields.io/badge/Input-640%C3%97640-555?style=flat" alt="Input: 640×640">
   <img src="https://img.shields.io/badge/Runs_Completed-28_Seed_42-brightgreen?style=flat" alt="Runs Completed: 28">
   <img src="https://img.shields.io/badge/Phase_4_Multi--Seed-In_Progress-orange?style=flat" alt="Phase 4 Multi-Seed: In Progress">
-  <a href="docs/manuscript/main.pdf"><img src="https://img.shields.io/badge/📄_Manuscript-6.0_Pages_(Compiled)-blue?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="Manuscript 6 Pages Compiled"></a>
+  <a href="docs/Reducing_False_Alarms.pdf"><img src="https://img.shields.io/badge/📄_Manuscript-8.0_Pages_(FINALIZED)-blue?style=for-the-badge&logo=adobeacrobatreader&logoColor=white" alt="Manuscript 8 Pages Finalized"></a>
 </p>
 
 ## Table of Contents
